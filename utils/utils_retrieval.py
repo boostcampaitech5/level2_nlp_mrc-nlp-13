@@ -1,6 +1,7 @@
 from typing import Any, Tuple, Optional, Callable, List
 from datasets import DatasetDict, Features, Value, Sequence, Dataset
 from utils.Retrieval import SparseRetrieval
+from utils.bm25 import BM25Retrieval
 
 def run_sparse_retrieval(stage, config,
     tokenize_fn: Callable[[str], List[str]],
@@ -22,6 +23,49 @@ def run_sparse_retrieval(stage, config,
         )
     else:
         df = retriever.retrieve(datasets["validation"], topk=config["data"]["top_k_retrieval"])
+        
+    # test data 에 대해선 정답이 없으므로 id question context 로만 데이터셋이 구성됩니다.
+    if stage == "predict":
+        f = Features(
+            {
+                "context": Value(dtype="string", id=None),
+                "id": Value(dtype="string", id=None),
+                "question": Value(dtype="string", id=None),
+            }
+        )
+
+    # train data 에 대해선 정답이 존재하므로 id question context answer 로 데이터셋이 구성됩니다.
+    elif stage == "eval":
+            {
+                "answers": Sequence(
+                    feature={
+                        "text": Value(dtype="string", id=None),
+                        "answer_start": Value(dtype="int32", id=None),
+                    },
+                    length=-1,
+                    id=None,
+                ),
+                "context": Value(dtype="string", id=None),
+                "id": Value(dtype="string", id=None),
+                "question": Value(dtype="string", id=None),
+            }
+    datasets = DatasetDict({"validation": Dataset.from_pandas(df, features=f)})
+    return datasets
+
+def run_bm25(stage, config,
+    tokenize_fn: Callable[[str], List[str]],
+    datasets: DatasetDict,
+    data_path: str = "./data",
+    context_path: str = "wikipedia_documents.json",
+) -> DatasetDict:
+
+    # Query에 맞는 Passage들을 Retrieval 합니다.
+    retriever = BM25Retrieval(
+        tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path
+    )
+    retriever.get_bm25()
+    
+    df = retriever.retrieve(datasets["validation"], topk=config["data"]["top_k_retrieval"])
         
     # test data 에 대해선 정답이 없으므로 id question context 로만 데이터셋이 구성됩니다.
     if stage == "predict":

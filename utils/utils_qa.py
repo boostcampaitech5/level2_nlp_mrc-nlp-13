@@ -347,7 +347,8 @@ def postprocess_qa_predictions(
 
     if mode == "predict":
         output_dir = "./predictions"
-        os.makedirs(output_dir)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
         # output_dir이 있으면 모든 dicts를 저장합니다.
         
         prediction_file = os.path.join(
@@ -377,6 +378,8 @@ def post_processing_function(stage, config, id, predictions, tokenizer):
         examples = load_from_disk(config["model"]["test_path"])
         if config["model"]["retrieval"] == 'sparse':
             examples = run_sparse_retrieval(stage = stage, config = config, tokenize_fn = tokenizer.tokenize, datasets = examples)
+        if config["model"]["retrieval"] == 'bm25':
+            examples = run_bm25(stage = stage, config = config, tokenize_fn = tokenizer.tokenize, datasets = examples)
         examples = examples["validation"]
         features = examples.map(prepare_validation_features,
                                 batched = True,

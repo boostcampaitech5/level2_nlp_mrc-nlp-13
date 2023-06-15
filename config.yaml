@@ -4,14 +4,14 @@ train:
 model:
   model_name : klue/roberta-large
   batch_size : 8
-  epoch : 3
+  epoch : 1
   LR : 0.00001
   optim : AdamW
   scheduler : StepLR
   loss_function : CrossEntropyLoss
   train_path : ./data/train_dataset
   test_path : ./data/test_dataset
-  retrieval : sparse
+  retrieval : bm25 # [sparse, bm25] 중 선택
 
 data:
   overwrite_cache : False

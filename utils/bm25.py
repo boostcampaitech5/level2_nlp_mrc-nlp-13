@@ -151,7 +151,7 @@ class BM25Retrieval:
         return doc_scores, doc_indices
         
 
-
+"""
 if __name__ == "__main__":
     cfg = OmegaConf.load('retrieval.yaml')
 
@@ -193,8 +193,4 @@ if __name__ == "__main__":
 
     with timer("single query by exhaustive search"):
             scores, indices = retriever.retrieve(query, topk)
-
-
-
-
-
+"""

@@ -2,7 +2,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 import torch
 from utils.utils_qa import prepare_train_features, prepare_validation_features
-from utils.utils_retrieval import run_sparse_retrieval
+from utils.utils_retrieval import *
 from datasets import load_from_disk
 
 class Dataset(torch.utils.data.Dataset):
@@ -123,7 +123,10 @@ class MRCDataModule(pl.LightningDataModule):
             
         if stage == 'predict':
             self.predict_dataset = load_from_disk(self.config["model"]["test_path"])
-            self.predict_dataset = run_sparse_retrieval("predict", self.config, self.tokenizer.tokenize, self.predict_dataset)
+            if self.config["model"]["retrieval"] == 'sparse':
+                self.predict_dataset = run_sparse_retrieval("predict", self.config, self.tokenizer.tokenize, self.predict_dataset)
+            elif self.config["model"]["retrieval"] == 'bm25':
+                self.predict_dataset = run_bm25("predict", self.config, self.tokenizer.tokenize, self.predict_dataset)
             self.column_names = self.predict_dataset["validation"].column_names
 
             # Validation Feature 생성
