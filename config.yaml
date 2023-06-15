@@ -1,0 +1,27 @@
+output_dir : ./output
+train:
+  seed : 42
+model:
+  model_name : klue/bert-base
+  batch_size : 16
+  epoch : 5
+  LR : 0.00001
+  optim : AdamW
+  scheduler : StepLR
+  loss_function : CrossEntropyLoss
+  train_path : ../input/data/train_dataset
+  test_path : ../input/data/test_dataset
+
+data:
+  dataset_name : ../input/data/train_dataset
+  overwrite_cache : False
+  preprocessing_num_workers : 4
+  max_seq_length : 512
+  pad_to_max_length : True
+  doc_stride : 128
+  max_answer_length : 200
+  eval_retrieval : True
+  num_clusters : 64
+  top_k_retrieval : 10
+  use_faiss : False
+  
