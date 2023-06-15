@@ -1,8 +1,8 @@
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 import torch
-from torch.utils.data import DataLoader
-from utils.Utils import *
+from utils.utils_qa import prepare_train_features, prepare_validation_features
+from utils.utils_retrieval import *
 from datasets import load_from_disk
 
 class Dataset(torch.utils.data.Dataset):
@@ -39,6 +39,7 @@ class MRCDataModule(pl.LightningDataModule):
         self.train_dataset=None
         self.eval_dataset=None
         self.test_dataset = None
+        self.predict_dataset = None
         self.column_names=None
         self.question_column_name=None
         self.answer_column_name=None
@@ -120,6 +121,26 @@ class MRCDataModule(pl.LightningDataModule):
             print(self.test_dataset)
             self.test_dataset = Dataset(self.test_dataset, stage)
             
+        if stage == 'predict':
+            self.predict_dataset = load_from_disk(self.config["model"]["test_path"])
+            if self.config["model"]["retrieval"] == 'sparse':
+                self.predict_dataset = run_sparse_retrieval("predict", self.config, self.tokenizer.tokenize, self.predict_dataset)
+            elif self.config["model"]["retrieval"] == 'bm25':
+                self.predict_dataset = run_bm25("predict", self.config, self.tokenizer.tokenize, self.predict_dataset)
+            self.column_names = self.predict_dataset["validation"].column_names
+
+            # Validation Feature 생성
+            self.predict_dataset = self.predict_dataset.map(
+                prepare_validation_features,
+                batched=True,
+                num_proc=self.config["data"]["preprocessing_num_workers"],
+                remove_columns=self.column_names,
+                load_from_cache_file=not self.config["data"]["overwrite_cache"],
+                fn_kwargs = {"tokenizer":self.tokenizer, "config":self.config}
+            )
+            print(self.predict_dataset)
+            self.predict_dataset = Dataset(self.predict_dataset["validation"], stage)
+            
     def train_dataloader(self):
         return torch.utils.data.DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=self.shuffle, num_workers = self.num_workers)
     
@@ -128,4 +149,7 @@ class MRCDataModule(pl.LightningDataModule):
 
     def test_dataloader(self):
         return torch.utils.data.DataLoader(self.test_dataset, batch_size = self.batch_size, num_workers = self.num_workers)
+    
+    def predict_dataloader(self):
+        return torch.utils.data.DataLoader(self.predict_dataset, batch_size = self.batch_size, num_workers = self.num_workers)
     

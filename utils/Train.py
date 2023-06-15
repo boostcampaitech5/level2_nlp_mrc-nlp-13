@@ -6,36 +6,30 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 import torch
-from torch.utils.data import DataLoader
 
 from datasets import DatasetDict, load_from_disk
 import evaluate
 from transformers import (
     AutoConfig,
-    AutoModelForQuestionAnswering,
     AutoTokenizer,
-    DataCollatorWithPadding,
-    EvalPrediction,
-    HfArgumentParser,
-    TrainingArguments,
-    set_seed,
 )
-from utils.Dataloader import  *
-from utils.Model import *
+from utils.Dataloader import MRCDataModule, Dataset
+from utils.Model import newModel
 import yaml
 logger = logging.getLogger(__name__)
 
 def train(cfg):
     # # 모델을 초기화하기 전에 난수를 고정합니다.
     # set_seed(training_args.seed)
+    save_path, folder_name = cfg['save_path'], cfg['folder_name']
     
     pl.seed_everything(cfg["train"]["seed"], workers=True)
     
-    datasets = load_from_disk(cfg["data"]["dataset_name"])
+    datasets = load_from_disk(cfg["model"]["train_path"])
     print(datasets)
     
     #save_path, folder_name = cfg['save_path'], cfg['folder_name']
-    model_config = AutoConfig.from_pretrained(cfg['model']['model_name'])
+    model_config = AutoConfig.from_pretrained(pretrained_model_name_or_path = cfg['model']['model_name'])
 
     model = newModel(cfg['model']['model_name'],
                   model_config,
@@ -51,7 +45,7 @@ def train(cfg):
         cfg['model']['model_name'], max_length = 200
     )
     
-    run_mrc(cfg, datasets, tokenizer, model)
+    run_mrc(cfg, datasets, tokenizer, model, save_path, folder_name)
         
 
 def run_mrc(
@@ -59,6 +53,8 @@ def run_mrc(
     datasets: DatasetDict,
     tokenizer,
     model,
+    save_path,
+    folder_name
 ) -> None:
     print("MRC start")
     dataloader = MRCDataModule(cfg, datasets, tokenizer, model)
@@ -71,4 +67,4 @@ def run_mrc(
     
     trainer.fit(model = model, datamodule = dataloader)
     trainer.test(model=model, datamodule = dataloader)
-    torch.save(model, f'model_1.pt')
+    torch.save(model, f'{save_path}/{folder_name}_model.pt')
