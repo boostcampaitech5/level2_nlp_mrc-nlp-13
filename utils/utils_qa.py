@@ -199,7 +199,7 @@ def postprocess_qa_predictions(
         scores_diff_json = collections.OrderedDict()
 
     # 전체 example들에 대한 main Loop
-    for example_index, example in enumerate(tqdm(examples)):
+    for example_index, example in enumerate(tqdm(examples, desc='Postprocessing')):
         # 해당하는 현재 example index
         feature_indices = features_per_example[example_index]
         min_null_prediction = None

@@ -14,7 +14,6 @@ from tqdm.auto import tqdm
 
 from rank_bm25 import BM25Okapi
 from transformers import AutoTokenizer
-from utils.Tokenizer import del_stopwords
 
 @contextmanager
 def timer(name):
