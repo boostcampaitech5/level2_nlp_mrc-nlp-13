@@ -2,6 +2,7 @@ from typing import Any, Tuple, Optional, Callable, List
 from datasets import DatasetDict, Features, Value, Sequence, Dataset
 from utils.Retrieval import SparseRetrieval
 from utils.bm25 import BM25Retrieval
+from konlpy.tag import Komoran
 
 def run_sparse_retrieval(stage, config,
     tokenize_fn: Callable[[str], List[str]],
@@ -58,12 +59,16 @@ def run_bm25(stage, config,
     data_path: str = "./data",
     context_path: str = "wikipedia_documents.json",
 ) -> DatasetDict:
+    
+    if config['model']['tokenizer'] == 'konlpy':
+         komoran = Komoran()
+         konlpy = komoran.morphs
 
     # Query에 맞는 Passage들을 Retrieval 합니다.
     retriever = BM25Retrieval(
         tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path
     )
-    retriever.get_bm25()
+    retriever.get_bm25(konlpy)
     
     df = retriever.retrieve(datasets["validation"], topk=config["data"]["top_k_retrieval"])
         
