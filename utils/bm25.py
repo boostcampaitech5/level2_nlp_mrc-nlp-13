@@ -14,6 +14,7 @@ from tqdm.auto import tqdm
 
 from rank_bm25 import BM25Okapi
 from transformers import AutoTokenizer
+from utils.Tokenizer import del_stopwords
 
 @contextmanager
 def timer(name):
@@ -43,9 +44,15 @@ class BM25Retrieval:
         self.tokenized_contexts = list()
         self.bm25 = None 
     
-    def get_bm25(self) -> None:
-        for doc in tqdm(self.contexts, desc="Tokeninzing contexts"):
-            self.tokenized_contexts.append(self.tokenize_fn(doc))
+    def get_bm25(self, tokenizer=False) -> None:
+        for doc in tqdm(self.contexts, desc='Tokenizing for BM25'):
+                if tokenizer:
+                    try:
+                        self.tokenized_contexts.append(tokenizer(doc))
+                    except:
+                        self.tokenized_contexts.append("null")
+                else:
+                    self.tokenized_contexts.append(self.tokenize_fn(doc))
         print("Finished Tokenizing!")
         self.bm25 = BM25Okapi(self.tokenized_contexts)
         print(type(self.bm25))
@@ -137,11 +144,26 @@ class BM25Retrieval:
         for question in queries:
              tokenized_queries.append(self.tokenize_fn(question))
         results = list()
-        for q in tqdm(tokenized_queries, desc='Getting Scores'):
+
+        pickle_name = f"scores_{self.tokenize_fn}.bin"
+        emd_path = os.path.join(self.data_path, pickle_name)
+    
+        if os.path.isfile(emd_path):
+            with open(emd_path, "rb") as file:
+                results = pickle.load(file)
+            print("Score pickle load.")
+        else:
+            print("Find Relevant Docs")
+            for q in tqdm(tokenized_queries, desc='Getting Scores'):
              results.append(self.bm25.get_scores(q) / 100)
         
-        if not isinstance(results[0], np.ndarray):
-            results = results.toarray()
+            if not isinstance(results[0], np.ndarray):
+                results = results.toarray()
+            
+            with open(emd_path, "wb") as file:
+                pickle.dump(results, file)
+            print("Score pickle saved.")
+
         doc_scores = []
         doc_indices = []
         for i in range(len(results)):
