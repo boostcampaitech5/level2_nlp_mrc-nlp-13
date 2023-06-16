@@ -2,10 +2,9 @@ import pytorch_lightning as pl
 import torch
 import evaluate
 from itertools import chain
-from transformers import AutoModelForQuestionAnswering, AutoTokenizer, EvalPrediction, AutoConfig
+from transformers import AutoModelForQuestionAnswering, AutoTokenizer, EvalPrediction
 from torch.optim.lr_scheduler import StepLR
 
-from datasets import load_from_disk
 from utils.utils_qa import post_processing_function
 
 def compute_metrics(p: EvalPrediction):
@@ -54,9 +53,6 @@ class newModel(pl.LightningModule):
         x = self.plm(input_ids = x["input_ids"],
                         attention_mask = x["attention_mask"])
         return x["start_logits"], x["end_logits"]
-        
-        # x = self.plm(input_ids=x[0], attention_mask=x[2], token_type_ids=x[1])
-        # return x["start_logits"], x["end_logits"]
     
     def training_step(self, batch):
         """

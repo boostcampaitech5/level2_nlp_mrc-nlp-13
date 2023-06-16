@@ -1,5 +1,4 @@
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint
 import torch
 from utils.utils_qa import prepare_train_features, prepare_validation_features
 from utils.utils_retrieval import *

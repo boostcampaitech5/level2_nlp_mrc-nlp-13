@@ -1,10 +1,10 @@
-admin : HYPE연어
+admin : KYH
 train:
   seed : 42
 model:
   model_name : klue/roberta-large
   batch_size : 8
-  epoch : 1
+  epoch : 3
   LR : 0.00001
   optim : AdamW
   scheduler : StepLR
@@ -12,7 +12,12 @@ model:
   train_path : ./data/train_dataset
   test_path : ./data/test_dataset
   retrieval : bm25 # [sparse, bm25] 중 선택
-
+EarlyStopping:
+  turn_on: True # False
+  monitor: val_em # [val_f1, val_em] 중 선택
+  min_delta: 0.00
+  patience: 3
+  verbose: True 
 data:
   overwrite_cache : False
   preprocessing_num_workers : 4
