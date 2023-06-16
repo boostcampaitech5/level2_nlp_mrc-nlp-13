@@ -1,19 +1,19 @@
-output_dir : ./output
+admin : HYPE연어
 train:
   seed : 42
 model:
-  model_name : klue/bert-base
-  batch_size : 16
-  epoch : 5
+  model_name : klue/roberta-large
+  batch_size : 8
+  epoch : 1
   LR : 0.00001
   optim : AdamW
   scheduler : StepLR
   loss_function : CrossEntropyLoss
-  train_path : ../input/data/train_dataset
-  test_path : ../input/data/test_dataset
+  train_path : ./data/train_dataset
+  test_path : ./data/test_dataset
+  retrieval : bm25 # [sparse, bm25] 중 선택
 
 data:
-  dataset_name : ../input/data/train_dataset
   overwrite_cache : False
   preprocessing_num_workers : 4
   max_seq_length : 512

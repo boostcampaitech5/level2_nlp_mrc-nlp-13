@@ -6,7 +6,7 @@ from transformers import AutoModelForQuestionAnswering, AutoTokenizer, EvalPredi
 from torch.optim.lr_scheduler import StepLR
 
 from datasets import load_from_disk
-from utils.Utils import *
+from utils.utils_qa import post_processing_function
 
 def compute_metrics(p: EvalPrediction):
     metric = evaluate.load("squad")
