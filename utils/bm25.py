@@ -14,7 +14,7 @@ from tqdm.auto import tqdm
 
 from rank_bm25 import BM25Okapi
 from transformers import AutoTokenizer
-
+from bm25_ce import *
 @contextmanager
 def timer(name):
     t0 = time.time()
@@ -31,7 +31,9 @@ class BM25Retrieval:
     ) -> None:
         
         self.data_path = data_path
-        with open(os.path.join(data_path, context_path), "r", encoding="utf-8") as f:
+        path="../data/wikipedia_documents.json"
+        #with open(os.path.join(data_path, context_path), "r", encoding="utf-8") as f:
+        with open(os.path.join(path), "r", encoding="utf-8") as f:
             wiki = json.load(f)
 
         self.contexts = list(
@@ -52,7 +54,7 @@ class BM25Retrieval:
         print("Finished setting BM25!")
 
     def retrieve(
-            self, query_or_dataset: Union[str, Dataset], topk: Optional[int] = 1
+            self, query_or_dataset: Union[str, Dataset], topk: Optional[int] = 1,
     ) -> Union[Tuple[List, List], pd.DataFrame]:
         
         assert len(self.tokenized_contexts) != 0, "get_bm25() 메소드를 먼저 실행해주세요."
@@ -60,12 +62,15 @@ class BM25Retrieval:
         if isinstance(query_or_dataset, str):
             doc_scores, doc_indices = self.get_relevant_doc(query_or_dataset, k=topk)
             print("[Search query]\n", query_or_dataset, "\n")
-
+            topk_index=[]
             for i in range(topk):
                 print(f"Top-{i+1} passage with score {doc_scores[i]:4f}")
                 print(self.contexts[doc_indices[i]])
+                topk_index.append(doc_indices[i])
 
-            return (doc_scores, [self.contexts[doc_indices[i]] for i in range(topk)])
+            similarity_scores, contexts = ce(query_or_dataset,topk_index,self.contexts)
+            #return (doc_scores, [self.contexts[doc_indices[i]] for i in range(topk)])
+            return (similarity_scores, contexts)
 
         elif isinstance(query_or_dataset, Dataset):
 
@@ -162,6 +167,7 @@ if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained(model, truncation=True)
     tokenize_fn = tokenizer.tokenize
     topk = cfg.topk
+    use_ce=cfg.use_ce
 
     org_dataset = load_from_disk(dataset_name)
     full_ds = concatenate_datasets(
