@@ -1,7 +1,7 @@
 model_name_or_path : 'klue/bert-base'
-dataset_name : "data/test_dataset/"
+dataset_name : "../data/train_dataset/"
 data_path : "data/"
 context_path : "wikipedia_documents.json"
 mode : bm25 # tfidf, dpr
-topk : 1
-
+topk : 5
+use_ce : True
