@@ -1,13 +1,24 @@
-from typing import Any, Tuple, Optional
+from typing import Any, Tuple, Optional, Callable, List
 import numpy as np
 import collections
 import tqdm
 from tqdm.auto import tqdm
 import os
 import json
-from datasets import load_from_disk
-from transformers import EvalPrediction
 import torch
+from datasets import DatasetDict, Dataset, load_from_disk, Features, Sequence, Value
+from transformers import EvalPrediction
+from datetime import datetime
+from datetime import timezone, timedelta
+from utils.utils_retrieval import *
+
+def get_folder_name(CFG):
+    now = datetime.now(tz=timezone(timedelta(hours=9)))
+    folder_name = now.strftime('%Y-%m-%d-%H:%M:%S') + f"_{CFG['admin']}"
+    save_path = f"./results/{folder_name}"
+    CFG['save_path'] = save_path
+    CFG['folder_name'] = folder_name
+    os.makedirs(save_path)
 
 # Train preprocessing / 전처리를 진행합니다.
 def prepare_train_features(examples, tokenizer, config):
@@ -21,7 +32,7 @@ def prepare_train_features(examples, tokenizer, config):
         stride=config["data"]["doc_stride"],
         return_overflowing_tokens=True,
         return_offsets_mapping=True,
-        #return_token_type_ids=True, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
+        return_token_type_ids=config["model"]["bert"], # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
         padding="max_length" if config["data"]["pad_to_max_length"] else False,
     )
 
@@ -99,7 +110,7 @@ def prepare_validation_features(examples, tokenizer, config):
         stride=config["data"]["doc_stride"],
         return_overflowing_tokens=True,
         return_offsets_mapping=True,
-        #return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
+        return_token_type_ids=config["model"]["bert"], # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
         padding="max_length" if config["data"]["pad_to_max_length"] else False,
     )
 
@@ -136,7 +147,6 @@ def postprocess_qa_predictions(
     n_best_size: int = 20,
     max_answer_length: int = 30,
     null_score_diff_threshold: float = 0.0,
-    output_dir: Optional[str] = None,
     prefix: Optional[str] = None,
     is_world_process_zero: bool = True,
 ):
@@ -337,6 +347,8 @@ def postprocess_qa_predictions(
 
     if mode == "predict":
         output_dir = "./predictions"
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
         # output_dir이 있으면 모든 dicts를 저장합니다.
         
         prediction_file = os.path.join(
@@ -361,15 +373,19 @@ def post_processing_function(stage, config, id, predictions, tokenizer):
                                 num_proc = 4,
                                 remove_columns = examples.column_names,
                                 fn_kwargs = {"tokenizer":tokenizer, "config":config})
-    """
-    if stage == "predict":
-        examples = load_from_disk(config["model"]["train_path"])["validation"]
+
+    else:
+        examples = load_from_disk(config["model"]["test_path"])
+        if config["model"]["retrieval"] == 'sparse':
+            examples = run_sparse_retrieval(stage = stage, config = config, tokenize_fn = tokenizer.tokenize, datasets = examples)
+        if config["model"]["retrieval"] == 'bm25':
+            examples = run_bm25(stage = stage, config = config, tokenize_fn = tokenizer.tokenize, datasets = examples)
+        examples = examples["validation"]
         features = examples.map(prepare_validation_features,
                                 batched = True,
                                 num_proc = 4,
                                 remove_columns = examples.column_names,
-                                fn_kwargs = {"tokenizer":tokenizer}) 
-    """
+                                fn_kwargs = {"tokenizer":tokenizer, "config":config}) 
     
     # Post-processing: start logits과 end logits을 original context의 정답과 match시킵니다.
     predictions = postprocess_qa_predictions(
@@ -379,7 +395,6 @@ def post_processing_function(stage, config, id, predictions, tokenizer):
         id = id,
         predictions=predictions,
         max_answer_length=config["data"]["max_answer_length"],
-        output_dir=config["output_dir"],
     )
     # Metric을 구할 수 있도록 Format을 맞춰줍니다.
     formatted_predictions = [
