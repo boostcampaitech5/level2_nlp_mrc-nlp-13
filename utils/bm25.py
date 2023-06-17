@@ -14,6 +14,7 @@ from tqdm.auto import tqdm
 
 from rank_bm25 import BM25Okapi
 from transformers import AutoTokenizer
+from utils.cross_encoder import ce,ce_doc
 
 @contextmanager
 def timer(name):
@@ -52,7 +53,7 @@ class BM25Retrieval:
         print("Finished setting BM25!")
 
     def retrieve(
-            self, query_or_dataset: Union[str, Dataset], topk: Optional[int] = 1
+            self, query_or_dataset: Union[str, Dataset], topk: Optional[int] = 1, add_ce:Optional[bool]=True,
     ) -> Union[Tuple[List, List], pd.DataFrame]:
         
         assert len(self.tokenized_contexts) != 0, "get_bm25() 메소드를 먼저 실행해주세요."
@@ -60,21 +61,27 @@ class BM25Retrieval:
         if isinstance(query_or_dataset, str):
             doc_scores, doc_indices = self.get_relevant_doc(query_or_dataset, k=topk)
             print("[Search query]\n", query_or_dataset, "\n")
+            print("instance is string")
+            if add_ce==True:
+                topk_index=[]
+                for i in range(topk):
+                    #print(f"Top-{i+1} passage with score {doc_scores[i]:4f}")
+                    #print(self.contexts[doc_indices[i]])
+                    topk_index.append(doc_indices[i])
+                    similarity_scores, contexts = ce(query_or_dataset,topk_index,self.contexts)
+                    return (similarity_scores, contexts)
 
-            for i in range(topk):
-                print(f"Top-{i+1} passage with score {doc_scores[i]:4f}")
-                print(self.contexts[doc_indices[i]])
-
-            return (doc_scores, [self.contexts[doc_indices[i]] for i in range(topk)])
+            else : return (doc_scores, [self.contexts[doc_indices[i]] for i in range(topk)])
 
         elif isinstance(query_or_dataset, Dataset):
-
+            print("instance is dataset")
             # Retrieve한 Passage를 pd.DataFrame으로 반환합니다.
             total = []
             with timer("query exhaustive search"):
                 doc_scores, doc_indices = self.get_relevant_doc_bulk(
                     query_or_dataset["question"], k=topk
                 )
+                doc_scores, doc_indices = ce_doc(query_or_dataset["question"],doc_indices,self.contexts)
             for idx, example in enumerate(
                 tqdm(query_or_dataset, desc="BM25 retrieval: ")
             ):
@@ -162,6 +169,7 @@ if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained(model, truncation=True)
     tokenize_fn = tokenizer.tokenize
     topk = cfg.topk
+    use_ce=cfg.use_ce
 
     org_dataset = load_from_disk(dataset_name)
     full_ds = concatenate_datasets(

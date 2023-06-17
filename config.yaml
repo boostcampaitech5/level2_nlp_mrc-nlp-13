@@ -4,7 +4,7 @@ train:
 model:
   model_name : klue/roberta-large
   batch_size : 8
-  epoch : 1
+  epoch : 3
   LR : 0.00001
   optim : AdamW
   scheduler : StepLR
@@ -12,6 +12,8 @@ model:
   train_path : ./data/train_dataset
   test_path : ./data/test_dataset
   retrieval : bm25 # [sparse, bm25] 중 선택
+  add_ce : True #bm25 이후 cross encoder를 사용한다면 True, 사용하지 않는다면 False
+  bert : False #roberta를 사용한다면 false로 설정, bert를 사용한다면 true로 설정
 
 data:
   overwrite_cache : False
@@ -22,6 +24,6 @@ data:
   max_answer_length : 200
   eval_retrieval : True
   num_clusters : 64
-  top_k_retrieval : 10
+  top_k_retrieval : 30
   use_faiss : False
   
