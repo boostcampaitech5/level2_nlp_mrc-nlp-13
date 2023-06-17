@@ -33,7 +33,7 @@ def run_sparse_retrieval(stage, config,
                 "id": Value(dtype="string", id=None),
                 "question": Value(dtype="string", id=None),
             }
-        )
+        ) 
 
     # train data 에 대해선 정답이 존재하므로 id question context answer 로 데이터셋이 구성됩니다.
     elif stage == "eval":
@@ -59,16 +59,12 @@ def run_bm25(stage, config,
     data_path: str = "./data",
     context_path: str = "wikipedia_documents.json",
 ) -> DatasetDict:
-    
-    if config['model']['tokenizer'] == 'konlpy':
-         komoran = Komoran()
-         konlpy = komoran.morphs
 
     # Query에 맞는 Passage들을 Retrieval 합니다.
     retriever = BM25Retrieval(
-        tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path
+        tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path, stage=stage
     )
-    retriever.get_bm25(konlpy)
+    retriever.get_bm25()
     
     df = retriever.retrieve(datasets["validation"], topk=config["data"]["top_k_retrieval"])
         

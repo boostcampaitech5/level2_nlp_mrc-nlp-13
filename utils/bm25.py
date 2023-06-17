@@ -5,6 +5,7 @@ import pickle
 import time
 from contextlib import contextmanager
 from typing import List, Optional, Tuple, Union
+import re
 
 import faiss
 import numpy as np
@@ -28,8 +29,10 @@ class BM25Retrieval:
         tokenize_fn,
         data_path: Optional[str] = "../data/",
         context_path: Optional[str] = "wikipedia_documents.json",
+        stage = 'predict'
     ) -> None:
         
+        self.stage = stage
         self.data_path = data_path
         with open(os.path.join(data_path, context_path), "r", encoding="utf-8") as f:
             wiki = json.load(f)
@@ -37,6 +40,8 @@ class BM25Retrieval:
         self.contexts = list(
             dict.fromkeys([v["text"] for v in wiki.values()])
             )  # set 은 매번 순서가 바뀌므로
+        for i in range(len(self.contexts)):
+            self.contexts[i] = re.sub('[^a-zA-Z0-9ㄱ-ㅎ가-힣\\s]|\n|\\n', '', self.contexts[i])
         print(f"Lengths of unique contexts : {len(self.contexts)}")
 
         self.tokenize_fn = tokenize_fn
@@ -44,17 +49,23 @@ class BM25Retrieval:
         self.bm25 = None 
     
     def get_bm25(self, tokenizer=False) -> None:
-        for doc in tqdm(self.contexts, desc='Tokenizing for BM25'):
-                if tokenizer:
-                    try:
-                        self.tokenized_contexts.append(tokenizer(doc))
-                    except:
-                        self.tokenized_contexts.append("null")
-                else:
-                    self.tokenized_contexts.append(self.tokenize_fn(doc))
-        print("Finished Tokenizing!")
+    
+        pickle_name = f"tokenized_context_{self.stage}.bin"
+        emd_path = os.path.join(self.data_path, pickle_name)
+    
+        if os.path.isfile(emd_path):
+            with open(emd_path, "rb") as file:
+                self.tokenized_contexts = pickle.load(file)
+            print("Tokenized context pickle load.")
+        else:
+            for doc in tqdm(self.contexts, desc='Tokenizing for BM25'):
+                self.tokenized_contexts.append(self.tokenize_fn(doc))
+            print("Finished Tokenizing!")            
+            
+            with open(emd_path, "wb") as file:
+                pickle.dump(self.tokenized_contexts, file)
+            print("Tokenized context pickle saved.")
         self.bm25 = BM25Okapi(self.tokenized_contexts)
-        print(type(self.bm25))
         print("Finished setting BM25!")
 
     def retrieve(
@@ -144,7 +155,7 @@ class BM25Retrieval:
              tokenized_queries.append(self.tokenize_fn(question))
         results = list()
 
-        pickle_name = f"scores_{self.tokenize_fn}.bin"
+        pickle_name = f"{self.stage}_scores.bin"
         emd_path = os.path.join(self.data_path, pickle_name)
     
         if os.path.isfile(emd_path):
@@ -152,7 +163,6 @@ class BM25Retrieval:
                 results = pickle.load(file)
             print("Score pickle load.")
         else:
-            print("Find Relevant Docs")
             for q in tqdm(tokenized_queries, desc='Getting Scores'):
              results.append(self.bm25.get_scores(q) / 100)
         
@@ -172,8 +182,9 @@ class BM25Retrieval:
         return doc_scores, doc_indices
         
 
-"""
+
 if __name__ == "__main__":
+    # python utils/bm25.py
     cfg = OmegaConf.load('retrieval.yaml')
 
     dataset_name = cfg.dataset_name
