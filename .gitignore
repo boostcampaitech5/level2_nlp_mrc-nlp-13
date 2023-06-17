@@ -22,3 +22,8 @@ checkpoints
 nohup.out
 *.pt
 .venv
+results/
+code/
+*.tar.gz
+*.csv
+*._code
