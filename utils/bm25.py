@@ -41,15 +41,13 @@ class BM25Retrieval:
         self.contexts = list(
             dict.fromkeys([v["text"] for v in wiki.values()])
             )  # set 은 매번 순서가 바뀌므로
-        for i in range(len(self.contexts)):
-            self.contexts[i] = re.sub('[^a-zA-Z0-9ㄱ-ㅎ가-힣\\s]|\n|\\n', '', self.contexts[i])
         print(f"Lengths of unique contexts : {len(self.contexts)}")
 
         self.tokenize_fn = tokenize_fn
         self.tokenized_contexts = list()
         self.bm25 = None 
     
-    def get_bm25(self, tokenizer=False) -> None:
+    def get_bm25(self) -> None:
     
         pickle_name = f"tokenized_context_{self.stage}.bin"
         emd_path = os.path.join(self.data_path, pickle_name)
@@ -233,4 +231,3 @@ if __name__ == "__main__":
 
     with timer("single query by exhaustive search"):
             scores, indices = retriever.retrieve(query, topk)
-"""
