@@ -21,3 +21,6 @@ checkpoints
 .bash_history
 nohup.out
 *.pt
+/results
+test.py
+.gitignore
