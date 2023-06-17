@@ -23,7 +23,6 @@ def inference(cfg):
     print(datasets)
 
     model = torch.load(f'{save_path}/{folder_name}_model.pt')
-    #model = torch.load(f'./results/2023-06-16-21:35:48_HYPE연어/2023-06-16-21:35:48_HYPE연어_model.pt')
     # AutoConfig를 이용하여 tokenizer를 불러옵니다.
     tokenizer = AutoTokenizer.from_pretrained(
         cfg['model']['model_name'], max_length = 200

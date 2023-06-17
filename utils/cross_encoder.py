@@ -44,10 +44,7 @@ def ce_doc(query,topk,passages):
         tmp_passage = {passages[j]:j for j in topk[i]}
         # Generate query-passage pairs
         query_passage_pairs = [(query[i], passage) for passage in candidate_passages]
-        #print(candidate_passages)
-        #print(tmp_passage)
-        #if i==0:
-        #    print(query_passage_pairs)
+
         # Compute similarity scores using CrossEncoder
         similarity_scores = cross_encoder.predict(query_passage_pairs)
 

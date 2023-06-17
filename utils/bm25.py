@@ -32,9 +32,7 @@ class BM25Retrieval:
     ) -> None:
         
         self.data_path = data_path
-        #path="../data/wikipedia_documents.json"
         with open(os.path.join(data_path, context_path), "r", encoding="utf-8") as f:
-        #with open(os.path.join(path), "r", encoding="utf-8") as f:
             wiki = json.load(f)
 
         self.contexts = list(
