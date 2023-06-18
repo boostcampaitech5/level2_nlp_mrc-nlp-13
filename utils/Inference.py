@@ -44,7 +44,7 @@ def run_mrc(
     print("Train Dataset:", dataloader.train_dataset)
     print("Eval Dataset:", dataloader.eval_dataset)
     
-    trainer = pl.Trainer(accelerator='gpu', max_epochs=cfg["model"]["epoch"])
+    trainer = pl.Trainer(accelerator='gpu', max_epochs=cfg["model"]["epoch"], precision=cfg['model']['precision'])
     
     predicts = trainer.predict(model = model, datamodule = dataloader)
     
