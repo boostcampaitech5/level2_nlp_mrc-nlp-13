@@ -32,7 +32,7 @@ def prepare_train_features(examples, tokenizer, config):
         stride=config["data"]["doc_stride"],
         return_overflowing_tokens=True,
         return_offsets_mapping=True,
-        return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
+        return_token_type_ids=config["model"]["bert"], # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
         padding="max_length" if config["data"]["pad_to_max_length"] else False,
     )
 
@@ -110,7 +110,7 @@ def prepare_validation_features(examples, tokenizer, config):
         stride=config["data"]["doc_stride"],
         return_overflowing_tokens=True,
         return_offsets_mapping=True,
-        return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
+        return_token_type_ids=config["model"]["bert"], # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
         padding="max_length" if config["data"]["pad_to_max_length"] else False,
     )
 
@@ -199,7 +199,7 @@ def postprocess_qa_predictions(
         scores_diff_json = collections.OrderedDict()
 
     # 전체 example들에 대한 main Loop
-    for example_index, example in enumerate(tqdm(examples)):
+    for example_index, example in enumerate(tqdm(examples, desc='Postprocessing')):
         # 해당하는 현재 example index
         feature_indices = features_per_example[example_index]
         min_null_prediction = None
