@@ -16,6 +16,7 @@ from tqdm.auto import tqdm
 from rank_bm25 import BM25Okapi
 from transformers import AutoTokenizer
 from utils.cross_encoder import ce,ce_doc
+from utils.preprocess import *
 
 @contextmanager
 def timer(name):
@@ -30,7 +31,9 @@ class BM25Retrieval:
         tokenize_fn,
         data_path: Optional[str] = "../data/",
         context_path: Optional[str] = "wikipedia_documents.json",
-        stage = 'predict'
+        stage = 'predict',
+        use_normalize = False,
+        use_sub = False
     ) -> None:
         
         self.stage = stage
@@ -42,6 +45,12 @@ class BM25Retrieval:
             dict.fromkeys([v["text"] for v in wiki.values()])
             )  # set 은 매번 순서가 바뀌므로
         print(f"Lengths of unique contexts : {len(self.contexts)}")
+
+        # context 데이터 전처리(sub=특수문자 처리, normalize=반각 문자 변환)
+        if use_sub:
+            self.contexts = list_sub_context(self.contexts)
+        if use_normalize:
+            self.contexts = list_normalize_context(self.contexts)
 
         self.tokenize_fn = tokenize_fn
         self.tokenized_contexts = list()

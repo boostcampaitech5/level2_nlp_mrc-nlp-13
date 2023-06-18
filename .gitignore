@@ -24,3 +24,4 @@ nohup.out
 /results
 test.py
 .gitignore
+outputs/
