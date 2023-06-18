@@ -4,6 +4,7 @@ import torch
 from utils.utils_qa import prepare_train_features, prepare_validation_features
 from utils.utils_retrieval import *
 from datasets import load_from_disk
+from utils.preprocess import *
 
 class Dataset(torch.utils.data.Dataset):
     """ Dataset 구성을 위한 class."""
@@ -68,6 +69,15 @@ class MRCDataModule(pl.LightningDataModule):
         if stage == 'fit':
             self.train_dataset = self.datasets["train"]
             self.column_names = self.datasets["train"].column_names
+
+            #데이터셋 추가 전처리
+            if self.config['data']['use_sub']:
+                self.train_dataset = dataset_sub_context(self.train_dataset, self.config['data']['use_normalize'])
+            if self.config['data']['use_normalize']:
+                self.train_dataset = normalize_question(self.train_dataset)
+                self.train_dataset = normalize_answer(self.train_dataset)
+                self.train_dataset = dataset_normalize_context(self.train_dataset)
+
             self.question_column_name = "question" if "question" in self.column_names else self.column_names[0]
             self.context_column_name = "context" if "context" in self.column_names else self.column_names[1]
             self.answer_column_name = "answers" if "answers" in self.column_names else self.column_names[2]
@@ -86,6 +96,15 @@ class MRCDataModule(pl.LightningDataModule):
 
             self.eval_dataset = self.datasets["validation"]
             self.column_names = self.datasets["validation"].column_names
+            
+            #데이터셋 추가 전처리
+            if self.config['data']['use_sub']:
+                self.eval_dataset = dataset_sub_context(self.eval_dataset, self.config['data']['use_normalize'])
+            if self.config['data']['use_normalize']:
+                self.eval_dataset = normalize_question(self.eval_dataset)
+                self.eval_dataset = normalize_answer(self.eval_dataset)
+                self.eval_dataset = dataset_normalize_context(self.eval_dataset)
+            
             self.question_column_name = "question" if "question" in self.column_names else self.column_names[0]
             self.context_column_name = "context" if "context" in self.column_names else self.column_names[1]
             self.answer_column_name = "answers" if "answers" in self.column_names else self.column_names[2]
@@ -105,6 +124,15 @@ class MRCDataModule(pl.LightningDataModule):
         if stage == 'test':
             self.test_dataset = self.datasets["validation"]
             self.column_names = self.datasets["validation"].column_names
+
+            #데이터셋 추가 전처리
+            if self.config['data']['use_sub']:
+                self.test_dataset = dataset_sub_context(self.test_dataset, self.config['data']['use_normalize'])
+            if self.config['data']['use_normalize']:
+                self.test_dataset = normalize_question(self.test_dataset)
+                self.test_dataset = normalize_answer(self.test_dataset)
+                self.test_dataset = dataset_normalize_context(self.test_dataset)
+
             self.question_column_name = "question" if "question" in self.column_names else self.column_names[0]
             self.context_column_name = "context" if "context" in self.column_names else self.column_names[1]
             self.answer_column_name = "answers" if "answers" in self.column_names else self.column_names[2]
