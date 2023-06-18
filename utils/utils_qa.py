@@ -149,6 +149,7 @@ def postprocess_qa_predictions(
     null_score_diff_threshold: float = 0.0,
     prefix: Optional[str] = None,
     is_world_process_zero: bool = True,
+    save_path = ''
 ):
     """
     Post-processes : qa model의 prediction 값을 후처리하는 함수
@@ -346,7 +347,7 @@ def postprocess_qa_predictions(
         ]
 
     if mode == "predict":
-        output_dir = "./predictions"
+        output_dir = save_path+"/predictions"
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         # output_dir이 있으면 모든 dicts를 저장합니다.
@@ -395,6 +396,7 @@ def post_processing_function(stage, config, id, predictions, tokenizer):
         id = id,
         predictions=predictions,
         max_answer_length=config["data"]["max_answer_length"],
+        save_path=config['save_path']
     )
     # Metric을 구할 수 있도록 Format을 맞춰줍니다.
     formatted_predictions = [

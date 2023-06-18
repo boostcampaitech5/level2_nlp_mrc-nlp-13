@@ -11,7 +11,7 @@ import pandas as pd
 from datasets import Dataset, concatenate_datasets, load_from_disk
 from sklearn.feature_extraction.text import TfidfVectorizer
 from tqdm.auto import tqdm
-
+from utils.preprocess import *
 
 @contextmanager
 def timer(name):
@@ -26,6 +26,8 @@ class SparseRetrieval:
         tokenize_fn,
         data_path: Optional[str] = "./data",
         context_path: Optional[str] = "wikipedia_documents.json",
+        use_normalize = False,
+        use_sub = False
     ) -> None:
 
         """
@@ -56,6 +58,13 @@ class SparseRetrieval:
         self.contexts = list(
             dict.fromkeys([v["text"] for v in wiki.values()])
         )  # set 은 매번 순서가 바뀌므로
+
+        # context 데이터 전처리(sub=특수문자 처리, normalize=반각 문자 변환)
+        if use_sub:
+            self.contexts = list_sub_context(self.contexts)
+        if use_normalize:
+            self.contexts = list_normalize_context(self.contexts)
+
         print(f"Lengths of unique contexts : {len(self.contexts)}")
         self.ids = list(range(len(self.contexts)))
 
