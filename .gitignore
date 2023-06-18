@@ -21,3 +21,4 @@ checkpoints
 .bash_history
 nohup.out
 *.pt
+outputs/
