@@ -96,7 +96,8 @@ class BM25Retrieval:
                 doc_scores, doc_indices = self.get_relevant_doc_bulk(
                     query_or_dataset["question"], k=topk
                 )
-                doc_scores, doc_indices = ce_doc(query_or_dataset["question"],doc_indices,self.contexts)
+                if add_ce==True:
+                    doc_scores, doc_indices = ce_doc(query_or_dataset["question"],doc_indices,self.contexts)
             for idx, example in enumerate(
                 tqdm(query_or_dataset, desc="BM25 retrieval: ")
             ):
