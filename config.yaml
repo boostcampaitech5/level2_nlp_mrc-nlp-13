@@ -1,11 +1,11 @@
-admin : HYPE연어
+admin : Hype연어
 train:
   seed : 42
 model:
   model_name : klue/roberta-large
-  batch_size : 8
-  epoch : 3
-  LR : 0.00001
+  batch_size : 16
+  epoch : 1
+  LR : 0.00005
   optim : AdamW
   scheduler : StepLR
   loss_function : CrossEntropyLoss
@@ -14,6 +14,7 @@ model:
   retrieval : bm25 # [sparse, bm25] 중 선택
   add_ce : True #bm25 이후 cross encoder를 사용한다면 True, 사용하지 않는다면 False
   bert : False #roberta를 사용한다면 false로 설정, bert를 사용한다면 true로 설정
+  precision : 16-mixed # 기본설정은 32s
 
 data:
   overwrite_cache : False
