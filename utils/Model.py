@@ -5,7 +5,7 @@ from itertools import chain
 from transformers import AutoModelForQuestionAnswering, AutoTokenizer, EvalPrediction
 from torch.optim.lr_scheduler import StepLR
 
-from utils.utils_qa import post_processing_function
+from utils.utils_qa import post_processing_function, FocalLoss
 
 def compute_metrics(p: EvalPrediction):
     metric = evaluate.load("squad")
@@ -42,7 +42,8 @@ class newModel(pl.LightningModule):
         self.tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME, max_length = 200)
         
         self.loss_dict = {
-            'CrossEntropyLoss' : torch.nn.CrossEntropyLoss()
+            'CrossEntropyLoss' : torch.nn.CrossEntropyLoss(),
+            'FocalLoss' : FocalLoss()
         }
         self.loss_func = self.loss_dict[loss]
         
