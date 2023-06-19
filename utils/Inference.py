@@ -41,9 +41,6 @@ def run_mrc(
     print("MRC start")
     dataloader = MRCDataModule(cfg, datasets, tokenizer, model)
     print("MRC Done")
-
-    print("Train Dataset:", dataloader.train_dataset)
-    print("Eval Dataset:", dataloader.eval_dataset)
     
     wandb_logger = WandbLogger(save_dir = save_path)
     trainer = pl.Trainer(accelerator='gpu', max_epochs=cfg["model"]["epoch"])

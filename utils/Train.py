@@ -89,7 +89,8 @@ def run_mrc(
                          max_epochs=cfg["model"]["epoch"],
                          log_every_n_steps = 1,
                          logger = wandb_logger,
-                         callbacks = [early_stopping, checkpoint, lr_monitor] if cfg['EarlyStopping']['turn_on'] else [checkpoint])
+                         callbacks = [early_stopping, checkpoint, lr_monitor] if cfg['EarlyStopping']['turn_on'] else [checkpoint],
+                         precision = '16-mixed')
     
     trainer.fit(model = model, datamodule = dataloader)
     trainer.test(model=model, datamodule = dataloader)

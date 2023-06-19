@@ -17,7 +17,7 @@ model:
   precision : 16 # 기본설정은 32s
 EarlyStopping:
   turn_on: True # False
-  monitor: val_em # [val_f1, val_em] 중 선택
+  monitor: val_em # [val_loss, val_f1, val_em] 중 선택
   min_delta: 0.00
   patience: 3
   verbose: True
