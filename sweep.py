@@ -38,6 +38,7 @@ if __name__ == '__main__':
         cfg['model']['parameter'] 형식에서 config.parameter 로 바꾸어 입력해주세요!
         '''
         global ver
+        global save_path
         cfg['version'] = ver
             # logger 생성
         '''
@@ -93,9 +94,8 @@ if __name__ == '__main__':
         
         trainer.fit(model=model, datamodule=dataloader)
         trainer.test(model=model, datamodule=dataloader)
-
+        
         torch.save(model, f'{save_path}/{folder_name}_ver{ver}_model.pt')
-        cfg['folder_name'] = cfg['folder_name']+f'_ver{ver}'
         ver += 1
 
 
