@@ -32,7 +32,7 @@ def prepare_train_features(examples, tokenizer, config):
         stride=config["data"]["doc_stride"],
         return_overflowing_tokens=True,
         return_offsets_mapping=True,
-        return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
+        return_token_type_ids=config["model"]["bert"], # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
         padding="max_length" if config["data"]["pad_to_max_length"] else False,
     )
 
@@ -194,7 +194,7 @@ def prepare_predict_features(examples, tokenizer, config):
         stride=config["data"]["doc_stride"],
         return_overflowing_tokens=True,
         return_offsets_mapping=True,
-        return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
+        return_token_type_ids=config["model"]["bert"], # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
         padding="max_length" if config["data"]["pad_to_max_length"] else False,
     )
 
@@ -233,6 +233,7 @@ def postprocess_qa_predictions(
     null_score_diff_threshold: float = 0.0,
     prefix: Optional[str] = None,
     is_world_process_zero: bool = True,
+    save_path = ''
 ):
     """
     Post-processes : qa model의 prediction 값을 후처리하는 함수
@@ -283,7 +284,7 @@ def postprocess_qa_predictions(
         scores_diff_json = collections.OrderedDict()
 
     # 전체 example들에 대한 main Loop
-    for example_index, example in enumerate(tqdm(examples)):
+    for example_index, example in enumerate(tqdm(examples, desc='Postprocessing')):
         # 해당하는 현재 example index
         feature_indices = features_per_example[example_index]
         min_null_prediction = None
@@ -430,7 +431,7 @@ def postprocess_qa_predictions(
         ]
 
     if mode == "predict":
-        output_dir = "./predictions"
+        output_dir = save_path+"/predictions"
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         # output_dir이 있으면 모든 dicts를 저장합니다.
@@ -479,6 +480,7 @@ def post_processing_function(stage, config, id, predictions, tokenizer):
         id = id,
         predictions=predictions,
         max_answer_length=config["data"]["max_answer_length"],
+        save_path=config['save_path']
     )
     # Metric을 구할 수 있도록 Format을 맞춰줍니다.
     formatted_predictions = [

@@ -1,23 +1,26 @@
-admin : KYH
+admin : HYPE연어
 train:
   seed : 42
 model:
   model_name : klue/roberta-large
-  batch_size : 8
-  epoch : 3
-  LR : 0.00001
+  batch_size : 16
+  epoch : 1
+  LR : 0.00005
   optim : AdamW
   scheduler : StepLR
   loss_function : CrossEntropyLoss
   train_path : ./data/train_dataset
   test_path : ./data/test_dataset
   retrieval : bm25 # [sparse, bm25] 중 선택
+  add_ce : True #bm25 이후 cross encoder를 사용한다면 True, 사용하지 않는다면 False
+  bert : False #roberta를 사용한다면 false로 설정, bert를 사용한다면 true로 설정
+  precision : 16 # 기본설정은 32s
 EarlyStopping:
   turn_on: True # False
   monitor: val_em # [val_f1, val_em] 중 선택
   min_delta: 0.00
   patience: 3
-  verbose: True 
+  verbose: True
 data:
   overwrite_cache : False
   preprocessing_num_workers : 4
@@ -27,6 +30,9 @@ data:
   max_answer_length : 200
   eval_retrieval : True
   num_clusters : 64
-  top_k_retrieval : 10
+  top_k_retrieval : 30
   use_faiss : False
+  use_sub: True
+  use_normalize: True
+
   

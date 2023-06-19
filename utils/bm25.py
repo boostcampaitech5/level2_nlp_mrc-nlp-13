@@ -5,6 +5,7 @@ import pickle
 import time
 from contextlib import contextmanager
 from typing import List, Optional, Tuple, Union
+import re
 
 import faiss
 import numpy as np
@@ -14,6 +15,8 @@ from tqdm.auto import tqdm
 
 from rank_bm25 import BM25Okapi
 from transformers import AutoTokenizer
+from utils.cross_encoder import ce,ce_doc
+from utils.preprocess import *
 
 @contextmanager
 def timer(name):
@@ -28,8 +31,12 @@ class BM25Retrieval:
         tokenize_fn,
         data_path: Optional[str] = "../data/",
         context_path: Optional[str] = "wikipedia_documents.json",
+        stage = 'predict',
+        use_normalize = False,
+        use_sub = False
     ) -> None:
         
+        self.stage = stage
         self.data_path = data_path
         with open(os.path.join(data_path, context_path), "r", encoding="utf-8") as f:
             wiki = json.load(f)
@@ -39,20 +46,38 @@ class BM25Retrieval:
             )  # set 은 매번 순서가 바뀌므로
         print(f"Lengths of unique contexts : {len(self.contexts)}")
 
+        # context 데이터 전처리(sub=특수문자 처리, normalize=반각 문자 변환)
+        if use_sub:
+            self.contexts = list_sub_context(self.contexts)
+        if use_normalize:
+            self.contexts = list_normalize_context(self.contexts)
+
         self.tokenize_fn = tokenize_fn
         self.tokenized_contexts = list()
         self.bm25 = None 
     
     def get_bm25(self) -> None:
-        for doc in tqdm(self.contexts, desc="Tokeninzing contexts"):
-            self.tokenized_contexts.append(self.tokenize_fn(doc))
-        print("Finished Tokenizing!")
+    
+        pickle_name = f"tokenized_context_{self.stage}.bin"
+        emd_path = os.path.join(self.data_path, pickle_name)
+    
+        if os.path.isfile(emd_path):
+            with open(emd_path, "rb") as file:
+                self.tokenized_contexts = pickle.load(file)
+            print("Tokenized context pickle load.")
+        else:
+            for doc in tqdm(self.contexts, desc='Tokenizing for BM25'):
+                self.tokenized_contexts.append(self.tokenize_fn(doc))
+            print("Finished Tokenizing!")            
+            
+            with open(emd_path, "wb") as file:
+                pickle.dump(self.tokenized_contexts, file)
+            print("Tokenized context pickle saved.")
         self.bm25 = BM25Okapi(self.tokenized_contexts)
-        print(type(self.bm25))
         print("Finished setting BM25!")
 
     def retrieve(
-            self, query_or_dataset: Union[str, Dataset], topk: Optional[int] = 1
+            self, query_or_dataset: Union[str, Dataset], topk: Optional[int] = 1, add_ce:Optional[bool]=True,
     ) -> Union[Tuple[List, List], pd.DataFrame]:
         
         assert len(self.tokenized_contexts) != 0, "get_bm25() 메소드를 먼저 실행해주세요."
@@ -60,21 +85,28 @@ class BM25Retrieval:
         if isinstance(query_or_dataset, str):
             doc_scores, doc_indices = self.get_relevant_doc(query_or_dataset, k=topk)
             print("[Search query]\n", query_or_dataset, "\n")
+            print("instance is string")
+            if add_ce==True:
+                topk_index=[]
+                for i in range(topk):
+                    #print(f"Top-{i+1} passage with score {doc_scores[i]:4f}")
+                    #print(self.contexts[doc_indices[i]])
+                    topk_index.append(doc_indices[i])
+                    similarity_scores, contexts = ce(query_or_dataset,topk_index,self.contexts)
+                    return (similarity_scores, contexts)
 
-            for i in range(topk):
-                print(f"Top-{i+1} passage with score {doc_scores[i]:4f}")
-                print(self.contexts[doc_indices[i]])
-
-            return (doc_scores, [self.contexts[doc_indices[i]] for i in range(topk)])
+            else : return (doc_scores, [self.contexts[doc_indices[i]] for i in range(topk)])
 
         elif isinstance(query_or_dataset, Dataset):
-
+            print("instance is dataset")
             # Retrieve한 Passage를 pd.DataFrame으로 반환합니다.
             total = []
             with timer("query exhaustive search"):
                 doc_scores, doc_indices = self.get_relevant_doc_bulk(
                     query_or_dataset["question"], k=topk
                 )
+                if add_ce==True:
+                    doc_scores, doc_indices = ce_doc(query_or_dataset["question"],doc_indices,self.contexts)
             for idx, example in enumerate(
                 tqdm(query_or_dataset, desc="BM25 retrieval: ")
             ):
@@ -137,11 +169,25 @@ class BM25Retrieval:
         for question in queries:
              tokenized_queries.append(self.tokenize_fn(question))
         results = list()
-        for q in tqdm(tokenized_queries, desc='Getting Scores'):
+
+        pickle_name = f"{self.stage}_scores.bin"
+        emd_path = os.path.join(self.data_path, pickle_name)
+    
+        if os.path.isfile(emd_path):
+            with open(emd_path, "rb") as file:
+                results = pickle.load(file)
+            print("Score pickle load.")
+        else:
+            for q in tqdm(tokenized_queries, desc='Getting Scores'):
              results.append(self.bm25.get_scores(q) / 100)
         
-        if not isinstance(results[0], np.ndarray):
-            results = results.toarray()
+            if not isinstance(results[0], np.ndarray):
+                results = results.toarray()
+            
+            with open(emd_path, "wb") as file:
+                pickle.dump(results, file)
+            print("Score pickle saved.")
+
         doc_scores = []
         doc_indices = []
         for i in range(len(results)):
@@ -151,8 +197,9 @@ class BM25Retrieval:
         return doc_scores, doc_indices
         
 
-"""
+
 if __name__ == "__main__":
+    # python utils/bm25.py
     cfg = OmegaConf.load('retrieval.yaml')
 
     dataset_name = cfg.dataset_name
@@ -162,6 +209,7 @@ if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained(model, truncation=True)
     tokenize_fn = tokenizer.tokenize
     topk = cfg.topk
+    use_ce=cfg.use_ce
 
     org_dataset = load_from_disk(dataset_name)
     full_ds = concatenate_datasets(
@@ -193,4 +241,3 @@ if __name__ == "__main__":
 
     with timer("single query by exhaustive search"):
             scores, indices = retriever.retrieve(query, topk)
-"""

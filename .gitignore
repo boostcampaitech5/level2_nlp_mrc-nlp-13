@@ -21,4 +21,13 @@ checkpoints
 .bash_history
 nohup.out
 *.pt
+.venv
+code/
+*.tar.gz
+*.csv
+*._code
+/results
+test.py
+.gitignore
+outputs/
 wandb/

@@ -23,7 +23,6 @@ def inference(cfg):
     print(datasets)
 
     model = torch.load(f'{save_path}/{folder_name}_model.pt')
-    
     # AutoConfig를 이용하여 tokenizer를 불러옵니다.
     tokenizer = AutoTokenizer.from_pretrained(
         cfg['model']['model_name'], max_length = 200
@@ -46,8 +45,8 @@ def run_mrc(
     print("Train Dataset:", dataloader.train_dataset)
     print("Eval Dataset:", dataloader.eval_dataset)
     
-    wandb_logger = WandbLogger(save_dir=save_path)
-    trainer = pl.Trainer(accelerator='gpu', logger = wandb_logger)
+    wandb_logger = WandbLogger(save_dir = save_path)
+    trainer = pl.Trainer(accelerator='gpu', max_epochs=cfg["model"]["epoch"])
     
     predicts = trainer.predict(model = model, datamodule = dataloader)
     
