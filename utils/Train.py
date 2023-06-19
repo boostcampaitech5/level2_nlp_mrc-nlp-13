@@ -1,4 +1,3 @@
-import logging
 import os
 import sys
 
@@ -6,6 +5,9 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 import torch
+from pytorch_lightning.loggers import WandbLogger
+import wandb
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, LearningRateMonitor
 
 from datasets import DatasetDict, load_from_disk
 import evaluate
@@ -16,7 +18,6 @@ from transformers import (
 from utils.Dataloader import MRCDataModule, Dataset
 from utils.Model import newModel
 import yaml
-logger = logging.getLogger(__name__)
 
 def train(cfg):
     # # 모델을 초기화하기 전에 난수를 고정합니다.
@@ -63,7 +64,33 @@ def run_mrc(
     print("Train Dataset:", dataloader.train_dataset)
     print("Eval Dataset:", dataloader.eval_dataset)
     
-    trainer = pl.Trainer(accelerator='gpu', max_epochs=cfg["model"]["epoch"], precision=cfg['model']['precision'])
+    wandb.init(name = folder_name, project = "MRC", entity = "hypesalmon", dir = save_path)
+    wandb_logger = WandbLogger(save_dir = save_path)
+    wandb_logger.experiment.config.update(cfg)
+    
+    early_stopping = EarlyStopping(
+        monitor = cfg['EarlyStopping']['monitor'],
+        min_delta = cfg['EarlyStopping']['min_delta'],
+        patience=cfg['EarlyStopping']['patience'],
+        verbose=cfg['EarlyStopping']['verbose'],
+        mode='max',
+    )
+    
+    checkpoint = ModelCheckpoint(
+        dirpath ='./checkpoints/',
+        filename = cfg['model']['model_name']+'-{epoch}-{val_em:.2f}-{val_f1:.2f}',
+        every_n_epochs = 1
+    )
+
+    # learning rate monitor
+    lr_monitor = LearningRateMonitor(logging_interval='step')
+    
+    trainer = pl.Trainer(accelerator='gpu',
+                         max_epochs=cfg["model"]["epoch"],
+                         log_every_n_steps = 1,
+                         logger = wandb_logger,
+                         callbacks = [early_stopping, checkpoint, lr_monitor] if cfg['EarlyStopping']['turn_on'] else [checkpoint],
+                         precision = '16-mixed')
     
     trainer.fit(model = model, datamodule = dataloader)
     trainer.test(model=model, datamodule = dataloader)

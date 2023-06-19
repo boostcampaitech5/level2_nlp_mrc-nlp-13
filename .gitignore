@@ -8,8 +8,8 @@
 basecode/
 lightning_logs/
 data/
+results/
 predictions/
-output/
 .netrc
 .profile
 .viminfo
@@ -30,3 +30,4 @@ code/
 test.py
 .gitignore
 outputs/
+wandb/

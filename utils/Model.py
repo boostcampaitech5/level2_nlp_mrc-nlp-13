@@ -2,10 +2,9 @@ import pytorch_lightning as pl
 import torch
 import evaluate
 from itertools import chain
-from transformers import AutoModelForQuestionAnswering, AutoTokenizer, EvalPrediction, AutoConfig
+from transformers import AutoModelForQuestionAnswering, AutoTokenizer, EvalPrediction
 from torch.optim.lr_scheduler import StepLR
 
-from datasets import load_from_disk
 from utils.utils_qa import post_processing_function
 
 def compute_metrics(p: EvalPrediction):
@@ -54,9 +53,6 @@ class newModel(pl.LightningModule):
         x = self.plm(input_ids = x["input_ids"],
                         attention_mask = x["attention_mask"])
         return x["start_logits"], x["end_logits"]
-        
-        # x = self.plm(input_ids=x[0], attention_mask=x[2], token_type_ids=x[1])
-        # return x["start_logits"], x["end_logits"]
     
     def training_step(self, batch):
         """
@@ -78,6 +74,12 @@ class newModel(pl.LightningModule):
         """
         data, id = batch
         start_logits, end_logits = self(data)
+        start_positions, end_positions = data["start_positions"], data["end_positions"]
+        
+        start_loss = self.loss_func(start_logits, start_positions)
+        end_loss = self.loss_func(end_logits, end_positions)
+        loss = (start_loss + end_loss) / 2
+        self.log("val_loss", loss)
         
         self.validation_step_outputs.append({"start_logits" : start_logits, "end_logits" : end_logits, "id" : id})
         
