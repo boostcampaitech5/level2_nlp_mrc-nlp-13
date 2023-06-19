@@ -17,12 +17,15 @@ from utils.utils_qa import post_processing_function
 import yaml
 from transformers import AutoTokenizer
 
-def inference(cfg):
+def inference(cfg, sweep = False, model = ''):
     save_path, folder_name = cfg['save_path'], cfg['folder_name']
     datasets = load_from_disk(cfg["model"]["test_path"])
     print(datasets)
 
-    model = torch.load(f'{save_path}/{folder_name}_model.pt')
+    if sweep == False:
+        model = torch.load(f'{save_path}/{folder_name}_model.pt')
+    else:
+        model = torch.load(model)
     # AutoConfig를 이용하여 tokenizer를 불러옵니다.
     tokenizer = AutoTokenizer.from_pretrained(
         cfg['model']['model_name'], max_length = 200
@@ -55,4 +58,4 @@ def run_mrc(
     id = list(chain(*ids))
     
     preds = post_processing_function("predict", cfg, id, predictions, tokenizer)
-
+    
