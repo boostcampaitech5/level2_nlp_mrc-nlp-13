@@ -107,7 +107,7 @@ def prepare_validation_features(examples, tokenizer, config):
         stride=config["data"]["doc_stride"],
         return_overflowing_tokens=True,
         return_offsets_mapping=True,
-        return_token_type_ids=False, # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
+        return_token_type_ids=config["model"]["bert"], # roberta모델을 사용할 경우 False, bert를 사용할 경우 True로 표기해야합니다.
         padding="max_length" if config["data"]["pad_to_max_length"] else False,
     )
     
@@ -387,7 +387,7 @@ def postprocess_qa_predictions(
             )
         if mode == "predict":
             # 모든 점수의 소프트맥스를 계산합니다(we do it with numpy to stay independent from torch/tf in this file, using the LogSumExp trick).
-            scores = torch.tensor([pred.pop("score") for pred in predictions])
+            scores = torch.tensor([pred.pop("score") for pred in predictions], device = torch.device('cuda'))
             exp_scores = torch.exp(scores - torch.max(scores))
             probs = exp_scores / exp_scores.sum()
 
