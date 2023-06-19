@@ -74,6 +74,12 @@ class newModel(pl.LightningModule):
         """
         data, id = batch
         start_logits, end_logits = self(data)
+        start_positions, end_positions = data["start_positions"], data["end_positions"]
+        
+        start_loss = self.loss_func(start_logits, start_positions)
+        end_loss = self.loss_func(end_logits, end_positions)
+        loss = (start_loss + end_loss) / 2
+        self.log("val_loss", loss)
         
         self.validation_step_outputs.append({"start_logits" : start_logits, "end_logits" : end_logits, "id" : id})
         

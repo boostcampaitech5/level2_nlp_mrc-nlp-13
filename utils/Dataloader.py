@@ -1,6 +1,6 @@
 import pytorch_lightning as pl
 import torch
-from utils.utils_qa import prepare_train_features, prepare_validation_features
+from utils.utils_qa import prepare_train_features, prepare_validation_features, prepare_predict_features
 from utils.utils_retrieval import *
 from datasets import load_from_disk
 
@@ -14,6 +14,17 @@ class Dataset(torch.utils.data.Dataset):
         if self.stage == 'fit':
             item = {key: torch.tensor(val) for key, val in self.dataset[idx].items()}
             return item
+        elif self.stage == 'eval':
+            item = {
+                "input_ids": torch.tensor(self.dataset[idx]["input_ids"]),
+                "attention_mask": torch.tensor(self.dataset[idx]["attention_mask"]),
+                "offset_mapping": torch.tensor(self.dataset[idx]["offset_mapping"]),
+                "start_positions" : torch.tensor(self.dataset[idx]["start_positions"]),
+                "end_positions": torch.tensor(self.dataset[idx]["end_positions"])
+            }
+            id = self.dataset[idx]["example_id"]
+
+            return item, id
         else:
             item = {
                 "input_ids": torch.tensor(self.dataset[idx]["input_ids"]),
@@ -98,7 +109,7 @@ class MRCDataModule(pl.LightningDataModule):
                 load_from_cache_file=not self.config["data"]["overwrite_cache"],
                 fn_kwargs = {"tokenizer":self.tokenizer, "config":self.config}
             )
-            self.eval_dataset = Dataset(self.eval_dataset,  stage= "eval")
+            self.eval_dataset = Dataset(self.eval_dataset,  stage = "eval")
             print("setup Done")
             
         if stage == 'test':
@@ -110,7 +121,7 @@ class MRCDataModule(pl.LightningDataModule):
 
             # Validation Feature 생성
             self.test_dataset = self.test_dataset.map(
-                prepare_validation_features,
+                prepare_predict_features,
                 batched=True,
                 num_proc=self.config["data"]["preprocessing_num_workers"],
                 remove_columns=self.column_names,
@@ -130,7 +141,7 @@ class MRCDataModule(pl.LightningDataModule):
 
             # Validation Feature 생성
             self.predict_dataset = self.predict_dataset.map(
-                prepare_validation_features,
+                prepare_predict_features,
                 batched=True,
                 num_proc=self.config["data"]["preprocessing_num_workers"],
                 remove_columns=self.column_names,
