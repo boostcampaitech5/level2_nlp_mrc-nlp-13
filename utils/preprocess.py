@@ -2,7 +2,18 @@ import re
 import unicodedata
 from datasets import DatasetDict
 
-cp = re.compile('\\\\n|\*|\\n|\\|#')
+def sub_text(
+          text: str
+) -> str:
+        cp = re.compile('\\\\n|\*|\\n|\\|#')
+        
+        text = re.sub(r"[“”‘’]", "\'", text)
+        text = re.sub(r"[〈<＜「≪《『]", "<", text)
+        text = re.sub(r"[〉>＞」≫》』]", ">", text)
+        text = cp.sub('', text)
+        return text
+
+
 
 def normalize_answer(
         dataset: DatasetDict
@@ -35,11 +46,11 @@ def dataset_sub_context(
     def sub(example):
         answer_start = example['answers']['answer_start'][0]
         if use_nomalize:
-                new_answer_start = len(cp.sub('',unicodedata.normalize('NFKC', example['context'][:answer_start])))
+                new_answer_start = len(sub_text(unicodedata.normalize('NFKC', example['context'][:answer_start])))
         else:
-                new_answer_start = len(cp.sub('', example['context'][:answer_start]))
+                new_answer_start = len(sub_text(example['context'][:answer_start]))
         example['answers']['answer_start'][0] = new_answer_start
-        return {"context": cp.sub('',example['context']), "answers": example['answers']}
+        return {"context": sub_text(example['context']), "answers": example['answers']}
     return dataset.map(sub)
 
 def dataset_normalize_context(
@@ -59,7 +70,7 @@ def list_sub_context(
         list 내의 context에 포함되어 있는 특수문자 제거
         '''
         for i in range(len(contexts)):
-                contexts[i] = cp.sub('',contexts[i])
+                contexts[i] = sub_text(contexts[i])
         return contexts
 
 def list_normalize_context(
