@@ -4,7 +4,7 @@ train:
 model:
   model_name : klue/roberta-large
   batch_size : 16
-  epoch : 1
+  epoch : 5
   LR : 0.00005
   optim : AdamW
   scheduler : StepLR
@@ -22,7 +22,7 @@ data:
   max_seq_length : 512
   pad_to_max_length : True
   doc_stride : 128
-  max_answer_length : 200
+  max_answer_length : 30
   eval_retrieval : True
   num_clusters : 64
   top_k_retrieval : 30

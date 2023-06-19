@@ -11,6 +11,7 @@ from transformers import EvalPrediction
 from datetime import datetime
 from datetime import timezone, timedelta
 from utils.utils_retrieval import *
+from utils.preprocess import *
 
 def get_folder_name(CFG):
     now = datetime.now(tz=timezone(timedelta(hours=9)))
@@ -303,7 +304,7 @@ def postprocess_qa_predictions(
             )
         if mode == "predict":
             # 모든 점수의 소프트맥스를 계산합니다(we do it with numpy to stay independent from torch/tf in this file, using the LogSumExp trick).
-            scores = torch.tensor([pred.pop("score") for pred in predictions])
+            scores = torch.tensor([pred.pop("score") for pred in predictions], device=torch.device('cuda'))
             exp_scores = torch.exp(scores - torch.max(scores))
             probs = exp_scores / exp_scores.sum()
 
@@ -369,6 +370,15 @@ def post_processing_function(stage, config, id, predictions, tokenizer):
     if stage == "eval":
         examples = load_from_disk(config["model"]["train_path"])
         examples = examples["validation"]
+
+        if config['data']['use_sub']:
+            examples = dataset_sub_context(examples, config['data']['use_normalize'])
+
+        if config['data']['use_normalize']:
+            examples = normalize_question(examples)
+            examples = normalize_answer(examples)
+            examples = dataset_normalize_context(examples)
+
         features = examples.map(prepare_validation_features,
                                 batched = True,
                                 num_proc = 4,
@@ -382,6 +392,7 @@ def post_processing_function(stage, config, id, predictions, tokenizer):
         if config["model"]["retrieval"] == 'bm25':
             examples = run_bm25(stage = stage, config = config, tokenize_fn = tokenizer.tokenize, datasets = examples)
         examples = examples["validation"]
+
         features = examples.map(prepare_validation_features,
                                 batched = True,
                                 num_proc = 4,
