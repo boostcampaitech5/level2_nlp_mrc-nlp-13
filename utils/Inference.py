@@ -1,10 +1,11 @@
-import logging
 import os
 import sys
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 
+import wandb
+from pytorch_lightning.loggers import WandbLogger
 import torch
 from itertools import chain
 from typing import Callable, Dict, List, Tuple
@@ -14,7 +15,6 @@ from utils.Dataloader import MRCDataModule
 from utils.Model import newModel
 from utils.utils_qa import post_processing_function
 import yaml
-logger = logging.getLogger(__name__)
 from transformers import AutoTokenizer
 
 def inference(cfg):
@@ -28,7 +28,7 @@ def inference(cfg):
         cfg['model']['model_name'], max_length = 200
     )
     
-    run_mrc(cfg, datasets, tokenizer, model)
+    run_mrc(cfg, datasets, tokenizer, model, save_path)
         
 
 def run_mrc(
@@ -36,15 +36,14 @@ def run_mrc(
     datasets: DatasetDict,
     tokenizer,
     model,
+    save_path
 ) -> None:
     print("MRC start")
     dataloader = MRCDataModule(cfg, datasets, tokenizer, model)
     print("MRC Done")
-
-    print("Train Dataset:", dataloader.train_dataset)
-    print("Eval Dataset:", dataloader.eval_dataset)
     
-    trainer = pl.Trainer(accelerator='gpu', max_epochs=cfg["model"]["epoch"], precision=cfg['model']['precision'])
+    wandb_logger = WandbLogger(save_dir = save_path)
+    trainer = pl.Trainer(accelerator='gpu', max_epochs=cfg["model"]["epoch"])
     
     predicts = trainer.predict(model = model, datamodule = dataloader)
     
@@ -56,4 +55,4 @@ def run_mrc(
     id = list(chain(*ids))
     
     preds = post_processing_function("predict", cfg, id, predictions, tokenizer)
-
+    
