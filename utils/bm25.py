@@ -36,7 +36,7 @@ class BM25Retrieval:
         use_sub = False,
         drop_duplicated_wiki= False,
         drop_less_than_50_percent_of_korean= False,
-        drop_too_long_text = False
+        drop_too_long_text = False,
         add_title_to_text = False
     ) -> None:
         
