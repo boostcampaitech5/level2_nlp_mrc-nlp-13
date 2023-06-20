@@ -21,6 +21,7 @@ def run_sparse_retrieval(stage, config,
         drop_duplicated_wiki = config['data']['drop_duplicated_wiki'],
         drop_less_than_50_percent_of_korean = config['data']['drop_less_than_50_percent_of_korean'],
         drop_too_long_text = config['data']['drop_too_long_text']
+        add_title_to_text = config['data']['add_title_to_text']
     )
     retriever.get_sparse_embedding()
     
@@ -78,6 +79,7 @@ def run_bm25(stage, config,
         drop_duplicated_wiki = config['data']['drop_duplicated_wiki'],
         drop_less_than_50_percent_of_korean = config['data']['drop_less_than_50_percent_of_korean'],
         drop_too_long_text = config['data']['drop_too_long_text']
+        add_title_to_text = config['data']['add_title_to_text']
     )
     retriever.get_bm25()
     

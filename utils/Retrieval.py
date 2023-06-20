@@ -66,7 +66,8 @@ class SparseRetrieval:
             wiki = drop_less_than_50_percent_of_korean(wiki)
         if drop_too_long_text: # 위키피다아 text 길이 가장 긴 상위 1% 제거
             wiki = drop_too_long_text(wiki)
-        
+        if add_title_to_text: # 검색능력 향상을 위해 title을 text 앞에 붙이기
+            wiki = add_title_to_text(wiki)
             
 
         self.contexts = list(

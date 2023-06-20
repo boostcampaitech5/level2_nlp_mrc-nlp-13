@@ -142,7 +142,20 @@ def drop_too_long_text(
         return new_wiki
         
         
-
+def add_title_to_text(
+        wiki: dict
+) -> dict:
+        '''
+        위키피디아 text에 title 합치기. 
+        검색 능력 향상을 위해
+        '''
+        df = pd.DataFrame(wiki).transpose()
+        df['text'] = df['title']+' '+df['text']
+        new_wiki = df.to_dict('index')
+        
+        return new_wiki
+        
+        
         
         
 
