@@ -13,7 +13,14 @@ def run_sparse_retrieval(stage, config,
 
     # Query에 맞는 Passage들을 Retrieval 합니다.
     retriever = SparseRetrieval(
-        tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path, use_normalize=config['data']['use_normalize'],use_sub=config['data']['use_normalize']
+        tokenize_fn=tokenize_fn, 
+        data_path=data_path, 
+        context_path=context_path, 
+        use_normalize=config['data']['use_normalize'],
+        use_sub=config['data']['use_normalize'],
+        drop_duplicated_wiki = config['data']['drop_duplicated_wiki'],
+        drop_less_than_50_percent_of_korean = config['data']['drop_less_than_50_percent_of_korean'],
+        drop_too_long_text = config['data']['drop_too_long_text']
     )
     retriever.get_sparse_embedding()
     
@@ -62,7 +69,15 @@ def run_bm25(stage, config,
 
     # Query에 맞는 Passage들을 Retrieval 합니다.
     retriever = BM25Retrieval(
-        tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path, stage=stage, use_normalize=config['data']['use_normalize'], use_sub=config['data']['use_sub']
+        tokenize_fn=tokenize_fn, 
+        data_path=data_path, 
+        context_path=context_path, 
+        stage=stage, 
+        use_normalize=config['data']['use_normalize'], 
+        use_sub=config['data']['use_sub'],
+        drop_duplicated_wiki = config['data']['drop_duplicated_wiki'],
+        drop_less_than_50_percent_of_korean = config['data']['drop_less_than_50_percent_of_korean'],
+        drop_too_long_text = config['data']['drop_too_long_text']
     )
     retriever.get_bm25()
     
