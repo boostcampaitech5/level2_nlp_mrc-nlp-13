@@ -2,6 +2,8 @@ import re
 import unicodedata
 from datasets import DatasetDict
 
+import pandas as pd
+
 def sub_text(
           text: str
 ) -> str:
@@ -82,3 +84,81 @@ def list_normalize_context(
      for i in range(len(contexts)):
         contexts[i] = unicodedata.normalize('NFKC', contexts[i])
      return contexts
+
+def drop_duplicated_wiki(
+        wiki: dict
+) -> dict:
+        '''
+        위키피디아 text 중복행 제거
+        '''
+        df = pd.DataFrame(wiki).transpose()
+        drop_dup_df = df.drop_duplicates(subset=['text'], keep='first')
+        drop_dup_wiki = drop_dup_df.to_dict('index')
+        return drop_dup_wiki
+
+def drop_less_than_50_percent_of_korean(
+        wiki: dict
+) -> dict:
+        '''
+        위키피디아 text에서 한글 비중 50% 이하 행 제거
+        '''
+        df = pd.DataFrame(wiki).transpose()
+        df['kor_ratio'] = df['text'].apply(count_kor_ratio)
+        drop_index = df[df['kor_ratio'] < 50].index
+        drop_less_than_50_df = df.drop(drop_index).drop(labels='kor_ratio', axis=1)
+        new_wiki = drop_less_than_50_df.to_dict('index')
+        
+        return new_wiki
+
+        
+def count_kor_ratio(
+        text: str
+) -> float:
+        '''
+        위키피디아 text에서 한글 비중 계산 함수
+        '''
+
+        processed_text = re.sub(r'[\n\s]','', text) #띄어쓰기 붙이기, \n 전처리
+        p = re.compile('[가-힣]')
+        cnt_kor = len(p.findall(processed_text))
+        ratio = cnt_kor/len(processed_text)*100
+        
+        return ratio
+
+
+def drop_too_long_text(
+        wiki: dict
+) -> dict:
+        '''
+        위키피디아 text에서 상위 1% 길이의 text 제거
+        '''
+        df = pd.DataFrame(wiki).transpose()
+        df['length'] = df['text'].apply(lambda x:len(re.sub(r'[\n\s]','', x)))
+        df['length_qcut'] = pd.qcut(df['length'],100, labels=range(100))
+        drop_index = df[df['length_qcut'] == 99].index
+        drop_too_long_df = df.drop(drop_index).drop(labels=['length', 'length_qcut'], axis=1)
+        new_wiki = drop_too_long_df.to_dict('index')
+        
+        return new_wiki
+        
+        
+def add_title_to_text(
+        wiki: dict
+) -> dict:
+        '''
+        위키피디아 text에 title 합치기. 
+        검색 능력 향상을 위해
+        '''
+        df = pd.DataFrame(wiki).transpose()
+        df['text'] = df['title']+' '+df['text']
+        new_wiki = df.to_dict('index')
+        
+        return new_wiki
+        
+        
+        
+        
+
+        
+        
+        
