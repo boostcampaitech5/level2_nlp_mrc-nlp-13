@@ -76,10 +76,10 @@ def run_bm25(stage, config,
         stage=stage, 
         use_normalize=config['data']['use_normalize'], 
         use_sub=config['data']['use_sub'],
-        drop_duplicated_wiki = config['data']['drop_duplicated_wiki'],
-        drop_less_than_50_percent_of_korean = config['data']['drop_less_than_50_percent_of_korean'],
-        drop_too_long_text = config['data']['drop_too_long_text'],
-        add_title_to_text = config['data']['add_title_to_text']
+        use_drop_duplicated_wiki = config['data']['use_drop_duplicated_wiki'],
+        use_drop_less_than_50_percent_of_korean = config['data']['use_drop_less_than_50_percent_of_korean'],
+        use_drop_too_long_text = config['data']['use_drop_too_long_text'],
+        use_add_title_to_text = config['data']['use_add_title_to_text']
     )
     retriever.get_bm25()
     

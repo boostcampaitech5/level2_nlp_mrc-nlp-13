@@ -136,7 +136,7 @@ def drop_too_long_text(
         df['length'] = df['text'].apply(lambda x:len(re.sub(r'[\n\s]','', x)))
         df['length_qcut'] = pd.qcut(df['length'],100, labels=range(100))
         drop_index = df[df['length_qcut'] == 99].index
-        drop_too_long_df = df.drop(drop_index).drop(labels=['length', 'length_qcut'])
+        drop_too_long_df = df.drop(drop_index).drop(labels=['length', 'length_qcut'], axis=1)
         new_wiki = drop_too_long_df.to_dict('index')
         
         return new_wiki

@@ -28,9 +28,10 @@ class SparseRetrieval:
         context_path: Optional[str] = "wikipedia_documents.json",
         use_normalize = False,
         use_sub = False,
-        drop_duplicated_wiki= False,
-        drop_less_than_50_percent_of_korean= False,
-        drop_too_long_text = False
+        use_drop_duplicated_wiki= False,
+        use_drop_less_than_50_percent_of_korean= False,
+        use_drop_too_long_text = False,
+        use_add_title_to_text = False
     ) -> None:
 
         """
@@ -60,13 +61,13 @@ class SparseRetrieval:
         
         
         
-        if drop_duplicated_wiki: # 위키피디아 text 중복 제거
+        if use_drop_duplicated_wiki: # 위키피디아 text 중복 제거
             wiki = drop_duplicated_wiki(wiki)
-        if drop_less_than_50_percent_of_korean: # 위키피디아 text에서 한글비중 50%이하 제거
+        if use_drop_less_than_50_percent_of_korean: # 위키피디아 text에서 한글비중 50%이하 제거
             wiki = drop_less_than_50_percent_of_korean(wiki)
-        if drop_too_long_text: # 위키피다아 text 길이 가장 긴 상위 1% 제거
+        if use_drop_too_long_text: # 위키피다아 text 길이 가장 긴 상위 1% 제거
             wiki = drop_too_long_text(wiki)
-        if add_title_to_text: # 검색능력 향상을 위해 title을 text 앞에 붙이기
+        if use_add_title_to_text: # 검색능력 향상을 위해 title을 text 앞에 붙이기
             wiki = add_title_to_text(wiki)
             
 
