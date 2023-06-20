@@ -45,7 +45,7 @@ class BM25Retrieval:
             wiki = json.load(f)
             
         if drop_duplicated_wiki: # 위키피디아 text 중복 제거
-            wiki = drop_dup(wiki)
+            wiki = drop_duplicated_wiki(wiki)
         if drop_less_than_50_percent_of_korean: # 위키피디아 text에서 한글비중 50%이하 제거
             wiki = drop_less_than_50_percent_of_korean(wiki)
         if drop_too_long_text: # 위키피다아 text 길이 가장 긴 상위 1% 제거

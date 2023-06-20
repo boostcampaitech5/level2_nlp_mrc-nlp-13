@@ -85,7 +85,7 @@ def list_normalize_context(
         contexts[i] = unicodedata.normalize('NFKC', contexts[i])
      return contexts
 
-def drop_dup(
+def drop_duplicated_wiki(
         wiki: dict
 ) -> dict:
         '''
