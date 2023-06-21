@@ -11,6 +11,10 @@ from transformers import EvalPrediction
 from datetime import datetime
 from datetime import timezone, timedelta
 from utils.utils_retrieval import *
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from utils.preprocess import *
 
 def get_folder_name(CFG):
     now = datetime.now(tz=timezone(timedelta(hours=9)))
@@ -453,6 +457,15 @@ def post_processing_function(stage, config, id, predictions, tokenizer):
     if stage == "eval":
         examples = load_from_disk(config["model"]["train_path"])
         examples = examples["validation"]
+
+        if config['data']['use_sub']:
+            examples = dataset_sub_context(examples, config['data']['use_normalize'])
+
+        if config['data']['use_normalize']:
+            examples = normalize_question(examples)
+            examples = normalize_answer(examples)
+            examples = dataset_normalize_context(examples)
+
         features = examples.map(prepare_predict_features,
                                 batched = True,
                                 num_proc = 4,
@@ -466,6 +479,7 @@ def post_processing_function(stage, config, id, predictions, tokenizer):
         if config["model"]["retrieval"] == 'bm25':
             examples = run_bm25(stage = stage, config = config, tokenize_fn = tokenizer.tokenize, datasets = examples)
         examples = examples["validation"]
+
         features = examples.map(prepare_predict_features,
                                 batched = True,
                                 num_proc = 4,
@@ -496,6 +510,20 @@ def post_processing_function(stage, config, id, predictions, tokenizer):
         ]
         return EvalPrediction(
             predictions=formatted_predictions, label_ids=references
+        )
+
+class FocalLoss(nn.Module):
+    def __init__(self, weight=None, gamma=0.5, reduction="mean"):
+        nn.Module.__init__(self)
+        self.weight = weight
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, input_tensor, target_tensor):
+        log_prob = F.log_softmax(input_tensor, dim=-1)
+        prob = torch.exp(log_prob)
+        return F.nll_loss(
+            ((1 - prob) ** self.gamma) * log_prob, target_tensor, weight=self.weight, reduction=self.reduction
         )
 
 # def check_no_error(

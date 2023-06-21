@@ -33,13 +33,26 @@ class BM25Retrieval:
         context_path: Optional[str] = "wikipedia_documents.json",
         stage = 'predict',
         use_normalize = False,
-        use_sub = False
+        use_sub = False,
+        use_drop_duplicated_wiki= False,
+        use_drop_less_than_50_percent_of_korean= False,
+        use_drop_too_long_text = False,
+        use_add_title_to_text = False
     ) -> None:
         
         self.stage = stage
         self.data_path = data_path
         with open(os.path.join(data_path, context_path), "r", encoding="utf-8") as f:
             wiki = json.load(f)
+            
+        if use_drop_duplicated_wiki: # 위키피디아 text 중복 제거
+            wiki = drop_duplicated_wiki(wiki)
+        if use_drop_less_than_50_percent_of_korean: # 위키피디아 text에서 한글비중 50%이하 제거
+            wiki = drop_less_than_50_percent_of_korean(wiki)
+        if use_drop_too_long_text: # 위키피다아 text 길이 가장 긴 상위 1% 제거
+            wiki = drop_too_long_text(wiki)
+        if use_add_title_to_text: # 검색능력 향상을 위해 title을 text 앞에 붙이기
+            wiki = add_title_to_text(wiki)
 
         self.contexts = list(
             dict.fromkeys([v["text"] for v in wiki.values()])
