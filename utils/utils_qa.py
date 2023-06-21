@@ -14,6 +14,7 @@ from utils.utils_retrieval import *
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from utils.preprocess import *
 
 def get_folder_name(CFG):
     now = datetime.now(tz=timezone(timedelta(hours=9)))
@@ -456,6 +457,15 @@ def post_processing_function(stage, config, id, predictions, tokenizer):
     if stage == "eval":
         examples = load_from_disk(config["model"]["train_path"])
         examples = examples["validation"]
+
+        if config['data']['use_sub']:
+            examples = dataset_sub_context(examples, config['data']['use_normalize'])
+
+        if config['data']['use_normalize']:
+            examples = normalize_question(examples)
+            examples = normalize_answer(examples)
+            examples = dataset_normalize_context(examples)
+
         features = examples.map(prepare_predict_features,
                                 batched = True,
                                 num_proc = 4,
@@ -469,6 +479,7 @@ def post_processing_function(stage, config, id, predictions, tokenizer):
         if config["model"]["retrieval"] == 'bm25':
             examples = run_bm25(stage = stage, config = config, tokenize_fn = tokenizer.tokenize, datasets = examples)
         examples = examples["validation"]
+
         features = examples.map(prepare_predict_features,
                                 batched = True,
                                 num_proc = 4,
