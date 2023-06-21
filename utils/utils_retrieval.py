@@ -13,7 +13,7 @@ def run_sparse_retrieval(stage, config,
 
     # Query에 맞는 Passage들을 Retrieval 합니다.
     retriever = SparseRetrieval(
-        tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path, use_normalize=config['data']['use_normalize'],use_sub=config['data']['use_normalize']
+        tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path, use_normalize=config['data']['use_normalize'],use_sub=config['data']['use_sub']
     )
     retriever.get_sparse_embedding()
     
