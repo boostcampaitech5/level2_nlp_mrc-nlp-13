@@ -1,0 +1,19 @@
+# pip requirements
+torch==2.0.1
+datasets==2.12.0
+transformers==4.29.2
+--upgrade accelerate
+--upgrade evaluate
+tqdm
+pandas
+scikit-learn
+omegaconf
+rank_bm25
+snetence_transformers
+--ignore-installed pytorch_lightningc
+wandb
+
+# faiss install (if you want to)
+faiss-gpu
+
+python main.py
