@@ -1,108 +1,138 @@
 from transformers import AutoTokenizer
+from datasets import DatasetDict, load_from_disk
+from torch.utils.data import TensorDataset
+from omegaconf import OmegaConf
+import pytorch_lightning as pl
 import torch
+import json
 
+class ColbertDataset(torch.utils.data.Dataset):
+    def __init__(self, query, doc, stage):
+        self.query = query
+        self.doc = doc
+        self.stage = stage
 
-class DocTokenizer():
-    def __init__(self, doc_maxlen, MODEL_NAME):
-        self.tok = AutoTokenizer.from_pretrained(MODEL_NAME)
-        self.doc_maxlen = doc_maxlen
-
-        self.D_marker_token, self.D_marker_token_id = '[D]', self.tok.convert_tokens_to_ids(['unused1'])
-        self.cls_token, self.cls_token_id = self.tok.cls_token, self.tok.cls_token_id
-        self.sep_token, self.sep_token_id = self.tok.sep_token, self.tok.sep_token_id
+    def __getitem__(self, idx):
+            query = {
+                "input_ids": torch.tensor(self.query[idx][0]),
+                "attention_mask": torch.tensor(self.query[idx][1]),
+                "token_type_ids": torch.tensor(self.query[idx][2]),
+            }
+            doc = {
+                "input_ids": torch.tensor(self.doc[idx][0]),
+                "attention_mask": torch.tensor(self.doc[idx][1]),
+                "token_type_ids": torch.tensor(self.doc[idx][2]),
+            }
+            return query, doc
         
+    def __len__(self):
+        return len(self.query)
 
-    def tokenize(self, batch_text, add_special_tokens=False):
-        assert type(batch_text) in [list, tuple], (type(batch_text))
 
-        tokens = [self.tok.tokenize(x, add_special_tokens=False) for x in batch_text]
 
-        if not add_special_tokens:
-            return tokens
+class ColbertDataModule(pl.LightningDataModule):
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+        self.model = 'klue/bert-base'
+        self.train_dir = config.model.train_path
+        self.test_dir = config.model.test_path
+        self.tokenizer = None
 
-        prefix, suffix = [self.cls_token, self.D_marker_token], [self.sep_token]
-        tokens = [prefix + lst + suffix for lst in tokens]
+        self.batch_size = config.model.batch_size
 
-        return tokens
 
-    def encode(self, batch_text, add_special_tokens=False):
-        assert type(batch_text) in [list, tuple], (type(batch_text))
+        self.train_dataset=None
+        self.eval_dataset=None
+        self.test_dataset = None
+        self.predict_dataset = None
+        self.column_names=None
+        self.question_column_name=None
+        self.answer_column_name=None
+        self.context_column_name=None
+        self.pad_on_right=None
+        self.last_checkpoint=None
+        self.max_seq_length=config.data.max_seq_length
 
-        ids = self.tok(batch_text, add_special_tokens=False)['input_ids']
+        self.shuffle = True
+        self.num_workers = 0
 
-        if not add_special_tokens:
-            return ids
+    def prepare_tokens(self, dataset, stage=False):
+        preprocessed_query=[]
+        for query in dataset['question']:
+            preprocessed_query.append('[Q] '+query)
 
-        prefix, suffix = [self.cls_token_id, self.D_marker_token_id], [self.sep_token_id]
-        ids = [prefix + lst + suffix for lst in ids]
+        q = self.tokenizer(
+            preprocessed_query,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=128,
+            return_token_type_ids=True,
+            )
+        
+        preprocessed_doc=[]
+        for doc in dataset['context']:
+            preprocessed_doc.append('[D] '+doc)
+        d = self.tokenizer(
+            preprocessed_doc,
+            return_tensors="pt",
+            padding='max_length',
+            truncation=True,
+            return_token_type_ids=True,
+            )
+    
+        return q, d
 
-        return ids
+    def setup(self,stage='fit'):
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model)
+        self.tokenizer.add_special_tokens({'additional_special_tokens': ['[Q]','[D]']})
 
-    def tensorize(self, batch_text, bsize=None):
-        assert type(batch_text) in [list, tuple], (type(batch_text))
+        if stage == 'fit':
+            self.train_dataset = load_from_disk(self.train_dir)['train']
+            self.column_names = self.train_dataset.column_names
+            q, d = self.prepare_tokens(self.train_dataset)
+            q = TensorDataset(q['input_ids'], q['attention_mask'], q['token_type_ids'])
+            d = TensorDataset(d['input_ids'], d['attention_mask'], d['token_type_ids'])
+            self.train_dataset = ColbertDataset(q, d, stage)
 
-        # add placehold for the [D] marker
-        batch_text = ['. ' + x for x in batch_text]
 
-        obj = self.tok(batch_text, padding='max_length', truncation='longest_first',
-                       return_tensors='pt', max_length=self.doc_maxlen)
+            self.eval_dataset = load_from_disk(self.train_dir)["validation"]
+            self.column_names = self.eval_dataset.column_names
+            q, d = self.prepare_tokens(self.eval_dataset)
+            q = TensorDataset(q['input_ids'], q['attention_mask'], q['token_type_ids'])
+            d = TensorDataset(d['input_ids'], d['attention_mask'], d['token_type_ids'])
+            self.eval_dataset = ColbertDataset(q, d,  stage = "eval")
 
-        ids, mask = obj['input_ids'], obj['attention_mask']
+        if stage == 'test':
+            self.test_dataset = load_from_disk(self.train_dir)["validation"]
+            self.column_names = self.test_dataset.column_names
+            q, d = self.prepare_tokens(self.test_dataset)
+            q = TensorDataset(q['input_ids'], q['attention_mask'], q['token_type_ids'])
+            d = TensorDataset(d['input_ids'], d['attention_mask'], d['token_type_ids'])
+            self.test_dataset = ColbertDataset(q, d, stage)
 
-        # postprocess for the [D] marker
-        ids[:, 1] = self.D_marker_token_id
+        if stage == 'predict':
+            predict_query = load_from_disk(self.test_dir)['validation']
+            self.column_names = predict_query.column_names
+            with open('data/wikipedia_documents.json', "r", encoding="utf-8") as f:
+                wiki = json.load(f)
+            predict_doc = list(dict.fromkeys([v["text"] for v in wiki.values()]))
+            self.predict_dataset = {"question" : predict_query['question'], "context" : predict_doc}
+            q, d = self.prepare_tokens(self.predict_dataset)
+            q = TensorDataset(q['input_ids'], q['attention_mask'], q['token_type_ids'])
+            d = TensorDataset(d['input_ids'], d['attention_mask'], d['token_type_ids'])
+            self.predict_dataset = ColbertDataset(q, d, stage)
 
-        return ids, mask
 
-class QueryTokenizer():
-    def __init__(self, query_maxlen, MODEL_NAME):
-        self.tok = AutoTokenizer.from_pretrained(MODEL_NAME)
-        self.query_maxlen = query_maxlen
+    def train_dataloader(self):
+        return torch.utils.data.DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=self.shuffle, num_workers = self.num_workers)
+    
+    def val_dataloader(self):
+        return torch.utils.data.DataLoader(self.eval_dataset, batch_size=self.batch_size, num_workers = self.num_workers)
 
-        self.D_marker_token, self.D_marker_token_id = '[Q]', self.tok.convert_tokens_to_ids(['unused0'])
-        self.cls_token, self.cls_token_id = self.tok.cls_token, self.tok.cls_token_id
-        self.sep_token, self.sep_token_id = self.tok.sep_token, self.tok.sep_token_id
-        self.mask_token, self.mask_token_id = self.tok.mask_token, self.tok.mask_token_id
-
-    def tokenize(self, batch_text, add_special_tokens=False):
-        assert type(batch_text) in [list, tuple], (type(batch_text))
-
-        tokens = [self.tok.tokenize(x, add_special_tokens=False) for x in batch_text]
-
-        if not add_special_tokens:
-            return tokens
-
-        prefix, suffix = [self.cls_token, self.Q_marker_token], [self.sep_token]
-        tokens = [prefix + lst + suffix + [self.mask_token] * (self.query_maxlen - (len(lst)+3)) for lst in tokens]
-
-        return tokens
-
-    def encode(self, batch_text, add_special_tokens=False):
-        assert type(batch_text) in [list, tuple], (type(batch_text))
-
-        ids = self.tok(batch_text, add_special_tokens=False)['input_ids']
-
-        if not add_special_tokens:
-            return ids
-
-        prefix, suffix = [self.cls_token_id, self.Q_marker_token_id], [self.sep_token_id]
-        ids = [prefix + lst + suffix + [self.mask_token_id] * (self.query_maxlen - (len(lst)+3)) for lst in ids]
-
-        return ids
-
-    def tensorize(self, batch_text, bsize=None):
-        assert type(batch_text) in [list, tuple], (type(batch_text))
-
-        # add placehold for the [Q] marker
-        batch_text = ['. ' + x for x in batch_text]
-
-        obj = self.tok(batch_text, padding='max_length', truncation=True,
-                       return_tensors='pt', max_length=self.query_maxlen)
-
-        ids, mask = obj['input_ids'], obj['attention_mask']
-
-        # postprocess for the [Q] marker and the [MASK] augmentation
-        ids[:, 1] = self.Q_marker_token_id
-        ids[ids == 0] = self.mask_token_id
-
-        return ids, mask
+    def test_dataloader(self):
+        return torch.utils.data.DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers = self.num_workers)
+    
+    def predict_dataloader(self):
+        return torch.utils.data.DataLoader(self.predict_dataset, batch_size = self.batch_size, num_workers = self.num_workers)

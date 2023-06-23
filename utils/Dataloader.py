@@ -165,6 +165,8 @@ class MRCDataModule(pl.LightningDataModule):
                 self.predict_dataset = run_sparse_retrieval("predict", self.config, self.tokenizer.tokenize, self.predict_dataset)
             elif self.config["model"]["retrieval"] == 'bm25':
                 self.predict_dataset = run_bm25("predict", self.config, self.tokenizer.tokenize, self.predict_dataset)
+            elif self.config["model"]["retrieval"] == 'colbert':
+                self.predict_dataset = run_colbert("predict", self.config, self.predict_dataset)
             self.column_names = self.predict_dataset["validation"].column_names
 
             # Validation Feature 생성
