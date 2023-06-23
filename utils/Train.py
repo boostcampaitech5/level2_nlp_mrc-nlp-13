@@ -90,7 +90,7 @@ def run_mrc(
                          log_every_n_steps = 1,
                          logger = wandb_logger,
                          callbacks = [early_stopping, checkpoint, lr_monitor] if cfg['EarlyStopping']['turn_on'] else [checkpoint],
-                         precision = '16-mixed')
+                         precision = cfg['model']['precision'])
     
     trainer.fit(model = model, datamodule = dataloader)
     trainer.test(model=model, datamodule = dataloader)
