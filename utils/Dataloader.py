@@ -59,7 +59,7 @@ class MRCDataModule(pl.LightningDataModule):
         self.last_checkpoint=None
         self.max_seq_length=cfg["data"]["max_seq_length"]
 
-        self.shuffle = True
+        self.shuffle = False
         self.num_workers = 8
 
     def setup(self,stage='fit'):
@@ -79,7 +79,12 @@ class MRCDataModule(pl.LightningDataModule):
         if stage == 'fit':
             self.train_dataset = self.datasets["train"]
             self.column_names = self.datasets["train"].column_names
-
+            
+            # context length 기준으로 정렬하여 curriculum learning
+            if self.config['model']['currirulum'] == True:
+                sorted_indices = sorted(range(len(self.train_dataset)), key=lambda x: len(self.train_dataset["context"][x]))
+                self.train_dataset = self.train_dataset.select(sorted_indices)
+            
             #데이터셋 추가 전처리
             if self.config['data']['use_sub']:
                 self.train_dataset = dataset_sub_context(self.train_dataset, self.config['data']['use_normalize'])

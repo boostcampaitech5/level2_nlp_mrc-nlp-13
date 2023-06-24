@@ -13,6 +13,7 @@ model:
   test_path : ./data/test_dataset
   retrieval : bm25 # [sparse, bm25] 중 선택
   add_ce : True #bm25 이후 cross encoder를 사용한다면 True, 사용하지 않는다면 False
+  curriculum : False # context length 기준으로 정렬하여 currirulum learning 할 거면 True, 아니면 False
   bert : False #roberta를 사용한다면 false로 설정, bert를 사용한다면 true로 설정
   precision : 16 # 기본설정은 32s
 EarlyStopping:
@@ -32,8 +33,8 @@ data:
   num_clusters : 64
   top_k_retrieval : 30
   use_faiss : False
-  use_sub: False
-  use_normalize: False
+  use_sub: True
+  use_normalize: True
   use_drop_duplicated_wiki: True
   use_drop_less_than_50_percent_of_korean: True
   use_drop_too_long_text: True
