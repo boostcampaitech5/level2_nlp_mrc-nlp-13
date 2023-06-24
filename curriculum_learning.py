@@ -41,6 +41,9 @@ class Dataloader(pl.LightningDataModule):
         self.num_workers = 8
         
     def setup(self, stage = 'fit'):
+        """
+        train data 기준으로 test해서 f1 score를 뽑아내기 위한 Dataloader
+        """
         if stage == 'test':
             self.test_dataset = self.test_dataset["validation"]
             self.column_names = self.test_dataset.column_names
@@ -105,7 +108,7 @@ class Model(pl.LightningModule):
     
     def on_test_epoch_end(self):
         """
-        calculate test data score
+        calculate test data score and record f1 score
         """
         outputs = self.test_step_outputs
         start_logits = torch.cat([x["start_logits"] for x in outputs])
@@ -123,73 +126,6 @@ class Model(pl.LightningModule):
 
         f1.append(result["f1"])
         self.test_step_outputs.clear()
-
-def run_sparse_retrieval(stage, cfg,
-    tokenize_fn: Callable[[str], List[str]],
-    datasets: DatasetDict,
-    data_path: str = "./data",
-    context_path: str = "wikipedia_documents.json",
-) -> DatasetDict:
-
-    # Query에 맞는 Passage들을 Retrieval 합니다.
-    retriever = SparseRetrieval(
-        tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path, use_normalize=cfg['data']['use_normalize'],use_sub=cfg['data']['use_normalize']
-    )
-    retriever.get_sparse_embedding()
-    
-    if cfg["data"]["use_faiss"]:
-        retriever.build_faiss(num_clusters=cfg["data"]["num_clusters"])
-        df = retriever.retrieve_faiss(
-            datasets["validation"], topk=cfg["data"]["top_k_retrieval"]
-        )
-    else:
-        df = retriever.retrieve(datasets["validation"], topk=cfg["data"]["top_k_retrieval"])
-    
-    # test data 에 대해선 정답이 없으므로 id question context 로만 데이터셋이 구성됩니다.
-    if stage == "predict":
-        f = Features(
-            {
-                "context": Value(dtype="string", id=None),
-                "id": Value(dtype="string", id=None),
-                "question": Value(dtype="string", id=None),
-            }
-        )
-    datasets = DatasetDict({"validation": Dataset.from_pandas(df, features=f)})
-    return datasets
-
-def run_bm25(stage, cfg,
-    tokenize_fn: Callable[[str], List[str]],
-    datasets : Dataset,
-    data_path: str = "./data",
-    context_path: str = "wikipedia_documents.json",
-):
-    # Query에 맞는 Passage들을 Retrieval 합니다.
-    retriever = BM25Retrieval(
-        tokenize_fn=tokenize_fn, data_path=data_path, context_path=context_path, stage=stage, use_normalize=cfg['data']['use_normalize'], use_sub=cfg['data']['use_sub']
-    )
-    retriever.get_bm25()
-    
-    df = retriever.retrieve(datasets, topk=cfg["data"]["top_k_retrieval"],add_ce=cfg["model"]["add_ce"])
-        
-    # test data 에 대해선 정답이 없으므로 id question context 로만 데이터셋이 구성됩니다.
-    if stage == "predict":
-        f = Features(
-            {
-                "answers": Sequence(
-                    feature={
-                        "text": Value(dtype="string", id=None),
-                        "answer_start": Value(dtype="int32", id=None),
-                    },
-                    length=-1,
-                    id=None,
-                ),
-                "context": Value(dtype="string", id=None),
-                "id": Value(dtype="string", id=None),
-                "question": Value(dtype="string", id=None),
-            }
-        )
-    datasets = DatasetDict({"train": Dataset.from_pandas(df, features=f)})
-    return datasets
 
 def postprocess_qa_predictions(
     mode,
@@ -455,6 +391,9 @@ def post_processing_function(stage, config, id, predictions, tokenizer):
         )
 
 if __name__ == '__main__':
+    """
+    train data를 8개로 나누어 각 그룹마다 f1 score를 계산하여 정렬해 저장
+    """
     with open('config.yaml') as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -463,9 +402,37 @@ if __name__ == '__main__':
     
     datasets = load_from_disk(cfg["model"]["train_path"])
     
-    # curriculum learning을 위한 train data만 뽑음
     total_datasets = len(datasets["train"])
     train_datasets = datasets["train"]
+    valid_datasets = datasets["validation"]
+    
+    context_length = []
+    for data in train_datasets:
+        context = data['context']
+        context_length.append(len(context))
+    
+    indexed_list = list(enumerate(context_length))
+    sorted_indicies = [index for index, _ in sorted(indexed_list, key=lambda x: x[1])]
+    
+    re_dataset = []
+    for i in sorted_indicies:
+        convert = {key : [value] for key, value in train_datasets[i].items()}
+        re_dataset.append(Dataset.from_dict(convert))
+    
+    combine_dataset = concatenate_datasets(re_dataset)
+    
+    final_dataset = DatasetDict({
+        "train":combine_dataset,
+        "validation": valid_datasets
+    })
+    
+    output_dir = "./data"
+    new_output_dir = "cur_train_dataset"
+    new_folder_path = os.path.join(output_dir, new_output_dir)
+    os.makedirs(new_folder_path)
+    
+    final_dataset.save_to_disk(new_folder_path)
+    
     valid_datasets = datasets["validation"]
     
     # 각 부분 데이터셋의 샘플 개수 계산
